@@ -11,7 +11,7 @@ from pathlib import Path
 
 # Definimos la ruta de la carpeta templates de forma absoluta pero dinámica
 BASE_DIR = Path(__file__).resolve().parent.parent
-templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
+templates = Jinja2Templates(directory=os.path.join(os.path.dirname(__file__), "..", "templates"))
 
 router = APIRouter(prefix="/clinica", tags=["Módulo Clínica (Grupo 2)"])
 
