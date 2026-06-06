@@ -17,7 +17,8 @@ router = APIRouter(prefix="/clinica", tags=["Módulo Clínica (Grupo 2)"])
 
 @router.get("/interfaz", response_class=HTMLResponse)
 async def ver_interfaz_clinica(request: Request):
-    return templates.TemplateResponse("clinica_agenda.html", {"request": request})
+    # Corrección clave para la nube: request=request y name=...
+    return templates.TemplateResponse(request=request, name="clinica_agenda.html")
 
 # ==========================================
 # RUTAS DE NEGOCIO

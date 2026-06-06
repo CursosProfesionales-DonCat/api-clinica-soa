@@ -17,6 +17,11 @@ class CitaResponse(CitaBase):
     estado: str
     creado_en: datetime
 
+    # Configuración esencial para que SQLAlchemy se comunique con FastAPI
+    class Config:
+        orm_mode = True
+        from_attributes = True
+
 # ---- Esquemas para Procedimientos ----
 class ProcedimientoBase(BaseModel):
     cita_id: Optional[int] = None
@@ -28,3 +33,8 @@ class ProcedimientoBase(BaseModel):
 class ProcedimientoResponse(ProcedimientoBase):
     id: int
     estado: str
+
+    # Configuración esencial para que SQLAlchemy se comunique con FastAPI
+    class Config:
+        orm_mode = True
+        from_attributes = True
