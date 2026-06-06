@@ -1,14 +1,10 @@
-from fastapi import FastAPI
-import webbrowser
+import os
 import threading
 import time
+import webbrowser
 import uvicorn
-
-# 1. Importamos el Router normal
+from fastapi import FastAPI
 from routers import clinica 
-
-# 2. Importamos el Modelo CON UN APODO (alias) para que no choque el nombre
-from models import clinica as modelos_clinica
 from database import engine, Base
 
 app = FastAPI(
@@ -17,22 +13,21 @@ app = FastAPI(
     version="1.0"
 )
 
-# Esto crea la tabla en PostgreSQL
+# Crea las tablas en PostgreSQL automáticamente al arrancar
 Base.metadata.create_all(bind=engine)
 
-# Aquí agregamos el router (ahora Python sabe exactamente cuál es)
+# Incluimos el router
 app.include_router(clinica.router)
 
 def abrir_navegador():
-    time.sleep(1.5) 
+    time.sleep(2) 
     webbrowser.open("http://127.0.0.1:8000/clinica/interfaz")
 
 if __name__ == "__main__":
-    # Solo abrimos el navegador si estamos en tu laptop (modo local)
-    # Importamos os para detectar si estamos en un entorno de servidor
-    import os
+    # Solo abre el navegador si NO estamos en Render
     if os.getenv("RENDER") is None:
         threading.Thread(target=abrir_navegador).start()
     
-    # "0.0.0.0" es la clave para que la nube (Render) escuche las peticiones
-    uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
+    # Puerto dinámico para Render o puerto 8000 local
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
