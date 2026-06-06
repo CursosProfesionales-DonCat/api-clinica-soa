@@ -28,5 +28,11 @@ def abrir_navegador():
     webbrowser.open("http://127.0.0.1:8000/clinica/interfaz")
 
 if __name__ == "__main__":
-    threading.Thread(target=abrir_navegador).start()
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    # Solo abrimos el navegador si estamos en tu laptop (modo local)
+    # Importamos os para detectar si estamos en un entorno de servidor
+    import os
+    if os.getenv("RENDER") is None:
+        threading.Thread(target=abrir_navegador).start()
+    
+    # "0.0.0.0" es la clave para que la nube (Render) escuche las peticiones
+    uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
