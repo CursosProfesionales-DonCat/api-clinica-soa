@@ -4,6 +4,7 @@ import time
 import webbrowser
 import uvicorn
 from fastapi import FastAPI
+from fastapi.responses import RedirectResponse  # <-- Agregamos esto
 from routers import clinica 
 from database import engine, Base
 
@@ -18,6 +19,15 @@ Base.metadata.create_all(bind=engine)
 
 # Incluimos el router
 app.include_router(clinica.router)
+
+# ========================================================
+# NUEVO: Redirección automática para el Profesor
+# ========================================================
+@app.get("/", include_in_schema=False)
+def ruta_principal():
+    """Si alguien entra a la URL base, lo mandamos a la interfaz"""
+    return RedirectResponse(url="/clinica/interfaz")
+# ========================================================
 
 def abrir_navegador():
     time.sleep(2) 
