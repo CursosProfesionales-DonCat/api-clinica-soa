@@ -251,6 +251,37 @@
                 msj.textContent = "Error. Verifique que los campos numéricos sean válidos.";
             }
         });
+
+        // 3.5 Lógica del Endpoint GET /clinica/citas/doctor/{doctor_id}
+        async function buscarPorDoctor() {
+            const docId = document.getElementById('doctorBusqueda').value;
+            if(!docId) return alert("Ingrese el ID del doctor");
+
+            const response = await fetch('/clinica/citas/doctor/' + docId);
+            const citas = await response.json();
+            const tbody = document.getElementById('tablaAgenda');
+            tbody.innerHTML = "";
+
+            if(citas.length === 0) {
+                tbody.innerHTML = "<tr><td colspan='6' class='text-center text-muted'>No hay citas registradas para este doctor.</td></tr>";
+                return;
+            }
+
+            citas.forEach(cita => {
+                const horaStr = new Date(cita.fecha_hora).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                const fechaStr = new Date(cita.fecha_hora).toLocaleDateString();
+                tbody.innerHTML += `
+                    <tr>
+                        <td class="fw-bold text-primary">#${cita.id}</td>
+                        <td><span class="badge bg-secondary">PCT-${cita.paciente_id}</span></td>
+                        <td><span class="badge bg-info text-dark">DOC-${cita.doctor_id}</span></td>
+                        <td>${fechaStr} ${horaStr}</td>
+                        <td>${cita.motivo || 'Sin detalle'}</td>
+                        <td><span class="badge bg-success">${cita.estado}</span></td>
+                    </tr>
+                `;
+            });
+        }
     </script>
 </body>
 </html>
