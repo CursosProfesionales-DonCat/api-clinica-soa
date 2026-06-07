@@ -21,6 +21,15 @@ async def ver_interfaz_clinica(request: Request):
     return templates.TemplateResponse(request=request, name="clinica_agenda.html")
 
 # ==========================================
+# BÚSQUEDA DE CITAS POR DOCTOR
+# ==========================================
+@router.get("/citas/doctor/{doctor_id}", response_model=list[CitaResponse])
+def ver_agenda_doctor(doctor_id: int, db: Session = Depends(get_db)):
+    """Permite a los otros grupos consultar todas las citas de un doctor específico"""
+    citas_bd = db.query(CitaDB).filter(CitaDB.doctor_id == doctor_id).all()
+    return citas_bd
+
+# ==========================================
 # RUTAS DE NEGOCIO
 # ==========================================
 
@@ -44,3 +53,4 @@ def registrar_procedimiento(proc: ProcedimientoBase, db: Session = Depends(get_d
     db.commit()
     db.refresh(nuevo_proc_db)
     return nuevo_proc_db
+
