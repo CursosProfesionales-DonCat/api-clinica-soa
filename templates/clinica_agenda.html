@@ -80,12 +80,18 @@
                 <div class="card shadow-sm border-0">
                     <div class="card-body p-4">
                         <h4 class="text-primary mb-4"><i class="bi bi-list-check"></i> Consultar Agenda Diaria</h4>
-                        <div class="row mb-4">
-                            <div class="col-md-4">
+                        <div class="row mb-4 g-2">
+                            <div class="col-md-3">
                                 <input type="date" class="form-control" id="fechaBusqueda">
                             </div>
                             <div class="col-md-3">
-                                <button onclick="buscarAgenda()" class="btn btn-secondary w-100"><i class="bi bi-search"></i> Buscar Citas</button>
+                                <button onclick="buscarAgenda()" class="btn btn-secondary w-100"><i class="bi bi-calendar"></i> Por Fecha</button>
+                            </div>
+                            <div class="col-md-3">
+                                <input type="number" class="form-control" id="doctorBusqueda" placeholder="ID del Doctor (Ej: 20)">
+                            </div>
+                            <div class="col-md-3">
+                                <button onclick="buscarPorDoctor()" class="btn btn-info text-white w-100"><i class="bi bi-person-badge"></i> Por Doctor</button>
                             </div>
                         </div>
                         <div class="table-responsive">
