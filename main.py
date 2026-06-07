@@ -4,7 +4,8 @@ import time
 import webbrowser
 import uvicorn
 from fastapi import FastAPI
-from fastapi.responses import RedirectResponse  # <-- Agregamos esto
+from fastapi.responses import RedirectResponse
+from fastapi.middleware.cors import CORSMiddleware # <-- 1. NUEVA IMPORTACIÓN
 from routers import clinica 
 from database import engine, Base
 
@@ -14,30 +15,36 @@ app = FastAPI(
     version="1.0"
 )
 
+# ========================================================
+# 2. CONFIGURACIÓN DE CORS (PERMITE CONECTARSE A OTROS)
+# ========================================================
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # El asterisco permite que cualquier IP o web se conecte
+    allow_credentials=True,
+    allow_methods=["*"],  # Permite métodos GET, POST, PUT, DELETE
+    allow_headers=["*"],  # Permite cualquier cabecera
+)
+# ========================================================
+
 # Crea las tablas en PostgreSQL automáticamente al arrancar
 Base.metadata.create_all(bind=engine)
 
 # Incluimos el router
 app.include_router(clinica.router)
 
-# ========================================================
-# NUEVO: Redirección automática para el Profesor
-# ========================================================
 @app.get("/", include_in_schema=False)
 def ruta_principal():
     """Si alguien entra a la URL base, lo mandamos a la interfaz"""
     return RedirectResponse(url="/clinica/interfaz")
-# ========================================================
 
 def abrir_navegador():
     time.sleep(2) 
     webbrowser.open("http://127.0.0.1:8000/clinica/interfaz")
 
 if __name__ == "__main__":
-    # Solo abre el navegador si NO estamos en Render
     if os.getenv("RENDER") is None:
         threading.Thread(target=abrir_navegador).start()
     
-    # Puerto dinámico para Render o puerto 8000 local
     port = int(os.environ.get("PORT", 8000))
     uvicorn.run(app, host="0.0.0.0", port=port)
