@@ -1,13 +1,14 @@
-from fastapi import APIRouter, Request, Depends
+from fastapi import APIRouter, Request, Depends, HTTPException
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
-from sqlalchemy import cast, Date
+from sqlalchemy import cast, Date, text
 from database import get_db
 from models.clinica import CitaDB, ProcedimientoDB
 from schemas.clinica import CitaBase, CitaResponse, ProcedimientoBase, ProcedimientoResponse
 from datetime import date
 from pathlib import Path
+from pydantic import BaseModel
 
 # Definimos la ruta de la carpeta templates de forma absoluta pero dinámica
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -15,10 +16,29 @@ templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 router = APIRouter(prefix="/clinica", tags=["Módulo Clínica (Grupo 2)"])
 
+# Esquema para recibir los datos del Login
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
 @router.get("/interfaz", response_class=HTMLResponse)
 async def ver_interfaz_clinica(request: Request):
     # Corrección clave para la nube: request=request y name=...
     return templates.TemplateResponse(request=request, name="clinica_agenda.html")
+
+# ==========================================
+# AUTENTICACIÓN (EXCLUSIVO PANEL G2)
+# ==========================================
+@router.post("/login")
+def login_admin(datos: LoginRequest, db: Session = Depends(get_db)):
+    """Verifica las credenciales del administrador directamente en Supabase"""
+    query = text("SELECT * FROM usuarios WHERE email = :email AND password = :password")
+    resultado = db.execute(query, {"email": datos.email, "password": datos.password}).fetchone()
+    
+    if resultado:
+        return {"status": "success", "message": "Acceso autorizado"}
+    else:
+        raise HTTPException(status_code=401, detail="Credenciales incorrectas")
 
 # ==========================================
 # BÚSQUEDA DE CITAS POR DOCTOR
