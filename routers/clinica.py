@@ -54,3 +54,15 @@ def registrar_procedimiento(proc: ProcedimientoBase, db: Session = Depends(get_d
     db.refresh(nuevo_proc_db)
     return nuevo_proc_db
 
+# ==========================================
+# NUEVO: REPORTE DE PACIENTES ATENDIDOS (EXCEL FILA 26)
+# ==========================================
+@router.get("/pacientes-atendidos")
+def ver_pacientes_atendidos(db: Session = Depends(get_db)):
+    """Devuelve la lista de IDs de pacientes únicos históricos para reportes de Dirección"""
+    pacientes = db.query(CitaDB.paciente_id).distinct().all()
+    lista_ids = [p[0] for p in pacientes]
+    return {
+        "total_pacientes_historicos": len(lista_ids),
+        "ids_pacientes": lista_ids
+    }
