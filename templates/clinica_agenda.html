@@ -17,12 +17,40 @@
     </style>
 </head>
 <body>
+
+    <div id="login-overlay" class="d-flex align-items-center justify-content-center" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: #2c3e50; z-index: 9999;">
+        <div class="card shadow-lg p-4 border-0 rounded-4" style="width: 100%; max-width: 400px; background: white;">
+            <div class="card-body text-center">
+                <div class="text-primary mb-3"><i class="bi bi-shield-lock-fill" style="font-size: 3.5rem;"></i></div>
+                <h4 class="fw-bold mb-1 text-dark">ECOSALUD SISTEMAS</h4>
+                <p class="text-muted small mb-4">Módulo de Clínica - Acceso Restringido</p>
+                
+                <div id="login-error" class="alert alert-danger d-none small py-2 fw-bold"><i class="bi bi-exclamation-triangle-fill"></i> Credenciales incorrectas</div>
+                
+                <form id="formLogin">
+                    <div class="mb-3 text-start">
+                        <label class="form-label small fw-bold text-secondary">Usuario Administrador</label>
+                        <input type="email" id="loginUser" class="form-control" placeholder="admin@ecosalud.com" required>
+                    </div>
+                    <div class="mb-4 text-start">
+                        <label class="form-label small fw-bold text-secondary">Contraseña</label>
+                        <input type="password" id="loginPass" class="form-control" placeholder="••••••••" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100 py-2 fw-bold fs-5 shadow-sm">Iniciar Sesión <i class="bi bi-box-arrow-in-right"></i></button>
+                </form>
+            </div>
+        </div>
+    </div>
     <div class="container-fluid p-0">
         <div class="col-md-2 sidebar shadow">
             <h4 class="text-center mb-4"><i class="bi bi-hospital"></i> Clínica Sur</h4>
             <a onclick="cambiarVista('vista-agendar', this)" class="menu-link active"><i class="bi bi-calendar-plus me-2"></i> Agendar Cita</a>
             <a onclick="cambiarVista('vista-agenda', this)" class="menu-link"><i class="bi bi-list-check me-2"></i> Agenda Diaria</a>
             <a onclick="cambiarVista('vista-procedimientos', this)" class="menu-link"><i class="bi bi-file-medical me-2"></i> Procedimientos</a>
+            
+            <div style="position: absolute; bottom: 20px; width: 100%;">
+                <a onclick="cerrarSesion()" class="text-danger border-top border-secondary pt-3 mt-3"><i class="bi bi-power me-2"></i> Cerrar Sesión</a>
+            </div>
         </div>
 
         <div class="topbar d-flex justify-content-between align-items-center">
@@ -148,7 +176,40 @@
     </div>
 
     <script>
+        // ==========================================
+        // LÓGICA DE SEGURIDAD (LOGIN SIMULADO)
+        // ==========================================
+        document.addEventListener("DOMContentLoaded", function() {
+            // Verifica si hay una sesión activa guardada en el navegador
+            if (localStorage.getItem('sesion_clinica') === 'activa') {
+                document.getElementById('login-overlay').style.display = 'none';
+            }
+        });
+
+        document.getElementById('formLogin').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const usuario = document.getElementById('loginUser').value;
+            const clave = document.getElementById('loginPass').value;
+            const errorDiv = document.getElementById('login-error');
+
+            // Credenciales válidas para la sustentación
+            if (usuario === 'admin@ecosalud.com' && clave === 'admin123') {
+                localStorage.setItem('sesion_clinica', 'activa');
+                document.getElementById('login-overlay').style.display = 'none';
+            } else {
+                errorDiv.classList.remove('d-none');
+                setTimeout(() => errorDiv.classList.add('d-none'), 3000);
+            }
+        });
+
+        function cerrarSesion() {
+            localStorage.removeItem('sesion_clinica');
+            location.reload(); // Recarga la página para mostrar el login de nuevo
+        }
+
+        // ==========================================
         // 1. Controlador de Navegación del Sidebar
+        // ==========================================
         function cambiarVista(idVista, elemento) {
             document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.menu-link').forEach(el => el.classList.remove('active', 'bg-primary'));
@@ -157,7 +218,9 @@
             elemento.classList.add('active', 'bg-primary');
         }
 
+        // ==========================================
         // 2. Lógica del Endpoint POST /clinica/cita
+        // ==========================================
         document.getElementById('formCita').addEventListener('submit', async function(e) {
             e.preventDefault();
             const payload = {
@@ -190,7 +253,9 @@
             }
         });
 
+        // ==========================================
         // 3. Lógica del Endpoint GET /clinica/citas/{fecha}
+        // ==========================================
         async function buscarAgenda() {
             const fecha = document.getElementById('fechaBusqueda').value;
             if(!fecha) return alert("Seleccione una fecha");
@@ -206,7 +271,6 @@
             }
 
             citas.forEach(cita => {
-                // Extraer solo la hora de la fecha ISO
                 const horaStr = new Date(cita.fecha_hora).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
                 tbody.innerHTML += `
                     <tr>
@@ -221,7 +285,9 @@
             });
         }
 
+        // ==========================================
         // 4. Lógica del Endpoint POST /clinica/procedimiento
+        // ==========================================
         document.getElementById('formProcedimiento').addEventListener('submit', async function(e) {
             e.preventDefault();
             const payload = {
@@ -252,7 +318,9 @@
             }
         });
 
-        // 3.5 Lógica del Endpoint GET /clinica/citas/doctor/{doctor_id}
+        // ==========================================
+        // 5. Lógica del Endpoint GET /clinica/citas/doctor/{doctor_id}
+        // ==========================================
         async function buscarPorDoctor() {
             const docId = document.getElementById('doctorBusqueda').value;
             if(!docId) return alert("Ingrese el ID del doctor");
