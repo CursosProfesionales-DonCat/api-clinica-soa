@@ -18,14 +18,14 @@
 </head>
 <body>
 
-    <div id="login-overlay" class="d-flex align-items-center justify-content-center" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: #2c3e50; z-index: 9999;">
+    <div id="login-overlay" class="d-flex align-items-center justify-content-center" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: #2c3e50; z-index: 9999; display: flex !important;">
         <div class="card shadow-lg p-4 border-0 rounded-4" style="width: 100%; max-width: 400px; background: white;">
             <div class="card-body text-center">
                 <div class="text-primary mb-3"><i class="bi bi-shield-lock-fill" style="font-size: 3.5rem;"></i></div>
                 <h4 class="fw-bold mb-1 text-dark">ECOSALUD SISTEMAS</h4>
-                <p class="text-muted small mb-4">Módulo de Clínica - Acceso Restringido</p>
+                <p class="text-muted small mb-4">Módulo de Clínica - Autenticación Base de Datos</p>
                 
-                <div id="login-error" class="alert alert-danger d-none small py-2 fw-bold"><i class="bi bi-exclamation-triangle-fill"></i> Credenciales incorrectas</div>
+                <div id="login-error" class="alert alert-danger d-none small py-2 fw-bold"><i class="bi bi-exclamation-triangle-fill"></i> Credenciales inválidas en Supabase</div>
                 
                 <form id="formLogin">
                     <div class="mb-3 text-start">
@@ -36,11 +36,12 @@
                         <label class="form-label small fw-bold text-secondary">Contraseña</label>
                         <input type="password" id="loginPass" class="form-control" placeholder="••••••••" required>
                     </div>
-                    <button type="submit" class="btn btn-primary w-100 py-2 fw-bold fs-5 shadow-sm">Iniciar Sesión <i class="bi bi-box-arrow-in-right"></i></button>
+                    <button type="submit" class="btn btn-primary w-100 py-2 fw-bold fs-5 shadow-sm">Verificar en BD <i class="bi bi-database-check"></i></button>
                 </form>
             </div>
         </div>
     </div>
+
     <div class="container-fluid p-0">
         <div class="col-md-2 sidebar shadow">
             <h4 class="text-center mb-4"><i class="bi bi-hospital"></i> Clínica Sur</h4>
@@ -61,7 +62,6 @@
         </div>
 
         <div class="main-content">
-            
             <div id="vista-agendar" class="view-section active">
                 <div class="card shadow-sm col-md-9 mx-auto border-0">
                     <div class="card-header bg-white border-bottom-0 pt-4 pb-0 text-center">
@@ -134,8 +134,7 @@
                                         <th>Estado</th>
                                     </tr>
                                 </thead>
-                                <tbody id="tablaAgenda">
-                                    </tbody>
+                                <tbody id="tablaAgenda"></tbody>
                             </table>
                         </div>
                     </div>
@@ -171,56 +170,54 @@
                     </div>
                 </div>
             </div>
-
         </div>
     </div>
 
     <script>
-        // ==========================================
-        // LÓGICA DE SEGURIDAD (LOGIN SIMULADO)
-        // ==========================================
-        document.addEventListener("DOMContentLoaded", function() {
-            // Verifica si hay una sesión activa guardada en el navegador
-            if (localStorage.getItem('sesion_clinica') === 'activa') {
-                document.getElementById('login-overlay').style.display = 'none';
-            }
-        });
+        // --- CONTROL DE ACCESO POR SERVIDOR ---
+        if (localStorage.getItem('sesion_clinica') === 'activa') {
+            document.getElementById('login-overlay').setAttribute('style', 'display: none !important;');
+        }
 
-        document.getElementById('formLogin').addEventListener('submit', function(e) {
+        document.getElementById('formLogin').addEventListener('submit', async function(e) {
             e.preventDefault();
-            const usuario = document.getElementById('loginUser').value;
-            const clave = document.getElementById('loginPass').value;
+            const email = document.getElementById('loginUser').value;
+            const password = document.getElementById('loginPass').value;
             const errorDiv = document.getElementById('login-error');
 
-            // Credenciales válidas para la sustentación
-            if (usuario === 'admin@ecosalud.com' && clave === 'admin123') {
-                localStorage.setItem('sesion_clinica', 'activa');
-                document.getElementById('login-overlay').style.display = 'none';
-            } else {
-                errorDiv.classList.remove('d-none');
-                setTimeout(() => errorDiv.classList.add('d-none'), 3000);
+            try {
+                const response = await fetch('/clinica/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                if (response.ok) {
+                    localStorage.setItem('sesion_clinica', 'activa');
+                    document.getElementById('login-overlay').setAttribute('style', 'display: none !important;');
+                } else {
+                    errorDiv.classList.remove('d-none');
+                    setTimeout(() => errorDiv.classList.add('d-none'), 3000);
+                }
+            } catch (err) {
+                alert("Error de conexión con el servidor Gateway.");
             }
         });
 
         function cerrarSesion() {
             localStorage.removeItem('sesion_clinica');
-            location.reload(); // Recarga la página para mostrar el login de nuevo
+            location.reload();
         }
 
-        // ==========================================
-        // 1. Controlador de Navegación del Sidebar
-        // ==========================================
+        // --- NAVEGACIÓN ---
         function cambiarVista(idVista, elemento) {
             document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.menu-link').forEach(el => el.classList.remove('active', 'bg-primary'));
-            
             document.getElementById(idVista).classList.add('active');
             elemento.classList.add('active', 'bg-primary');
         }
 
-        // ==========================================
-        // 2. Lógica del Endpoint POST /clinica/cita
-        // ==========================================
+        // --- ENDPOINT POST /clinica/cita ---
         document.getElementById('formCita').addEventListener('submit', async function(e) {
             e.preventDefault();
             const payload = {
@@ -253,9 +250,7 @@
             }
         });
 
-        // ==========================================
-        // 3. Lógica del Endpoint GET /clinica/citas/{fecha}
-        // ==========================================
+        // --- ENDPOINT GET /clinica/citas/{fecha} ---
         async function buscarAgenda() {
             const fecha = document.getElementById('fechaBusqueda').value;
             if(!fecha) return alert("Seleccione una fecha");
@@ -285,9 +280,7 @@
             });
         }
 
-        // ==========================================
-        // 4. Lógica del Endpoint POST /clinica/procedimiento
-        // ==========================================
+        // --- ENDPOINT POST /clinica/procedimiento ---
         document.getElementById('formProcedimiento').addEventListener('submit', async function(e) {
             e.preventDefault();
             const payload = {
@@ -318,9 +311,7 @@
             }
         });
 
-        // ==========================================
-        // 5. Lógica del Endpoint GET /clinica/citas/doctor/{doctor_id}
-        // ==========================================
+        // --- ENDPOINT GET /clinica/citas/doctor/{doctor_id} ---
         async function buscarPorDoctor() {
             const docId = document.getElementById('doctorBusqueda').value;
             if(!docId) return alert("Ingrese el ID del doctor");
