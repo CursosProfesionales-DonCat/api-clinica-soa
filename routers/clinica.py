@@ -67,7 +67,7 @@ def agendar_cita(cita: CitaBase, db: Session = Depends(get_db)):
         respuesta_doctores = requests.get(f"{URL_GRUPO1_DOCTORES}/doctores?activo=true", timeout=5)
         if respuesta_doctores.status_code == 200:
             doctores_activos = respuesta_doctores.json()
-            # Buscar si el doctor_id enviado existe en el JSON devuelto por el Grupo 1
+            # Buscar si el doctor_id enviado existe en el catálogo del Grupo 1
             doctor_existe = any(doc["id"] == cita.doctor_id for doc in doctores_activos)
             
             if not doctor_existe:
@@ -76,7 +76,7 @@ def agendar_cita(cita: CitaBase, db: Session = Depends(get_db)):
                     detail=f"Integración G1: El doctor con ID {cita.doctor_id} no existe o no está activo."
                 )
         else:
-            raise HTTPException(status_code=503, detail="El microservicio del Grupo 1 no responde.")
+            raise HTTPException(status_code=503, detail="El microservicio del Grupo 1 no responde correctamente.")
     except requests.exceptions.RequestException:
         raise HTTPException(status_code=503, detail="Error de conexión con el servidor del Grupo 1.")
 
