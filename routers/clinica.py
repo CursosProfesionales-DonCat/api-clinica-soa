@@ -1,3 +1,4 @@
+import requests
 from fastapi import APIRouter, Request, Depends, HTTPException
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
@@ -16,6 +17,11 @@ templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 router = APIRouter(prefix="/clinica", tags=["Módulo Clínica (Grupo 2)"])
 
+# ==========================================
+# URLS DE MICROSERVICIOS EXTERNOS (SOA)
+# ==========================================
+URL_GRUPO3_DOCTORES = "https://serviciodoctor.onrender.com"
+
 # Esquema para recibir los datos del Login
 class LoginRequest(BaseModel):
     email: str
@@ -23,7 +29,6 @@ class LoginRequest(BaseModel):
 
 @router.get("/interfaz", response_class=HTMLResponse)
 async def ver_interfaz_clinica(request: Request):
-    # Corrección clave para la nube: request=request y name=...
     return templates.TemplateResponse(request=request, name="clinica_agenda.html")
 
 # ==========================================
@@ -50,11 +55,44 @@ def ver_agenda_doctor(doctor_id: int, db: Session = Depends(get_db)):
     return citas_bd
 
 # ==========================================
-# RUTAS DE NEGOCIO
+# RUTAS DE NEGOCIO (ORQUESTACIÓN)
 # ==========================================
 
 @router.post("/cita", response_model=CitaResponse)
 def agendar_cita(cita: CitaBase, db: Session = Depends(get_db)):
+    """Orquesta la validación con el Grupo 3 y la disponibilidad de horarios"""
+    
+    # 1. CONSUMO SOA: Validar que el doctor existe y está activo en el Grupo 3
+    try:
+        respuesta_doctores = requests.get(f"{URL_GRUPO3_DOCTORES}/doctores?activo=true", timeout=5)
+        if respuesta_doctores.status_code == 200:
+            doctores_activos = respuesta_doctores.json()
+            # Buscar si el doctor_id enviado existe en el JSON devuelto por el Grupo 3
+            doctor_existe = any(doc["id"] == cita.doctor_id for doc in doctores_activos)
+            
+            if not doctor_existe:
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"Integración G3: El doctor con ID {cita.doctor_id} no existe o no está activo."
+                )
+        else:
+            raise HTTPException(status_code=503, detail="El microservicio del Grupo 3 no responde.")
+    except requests.exceptions.RequestException:
+        raise HTTPException(status_code=503, detail="Error de conexión con el servidor del Grupo 3.")
+
+    # 2. VALIDACIÓN DE DISPONIBILIDAD: Verificar cruce de horarios en nuestra BD
+    cita_existente = db.query(CitaDB).filter(
+        CitaDB.doctor_id == cita.doctor_id,
+        CitaDB.fecha_hora == cita.fecha_hora
+    ).first()
+
+    if cita_existente:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Conflicto de Agenda: El doctor {cita.doctor_id} ya tiene una cita reservada para ese exacto horario."
+        )
+
+    # 3. GUARDAR: Si pasa las dos validaciones, se orquesta y se guarda la cita
     nueva_cita_db = CitaDB(**cita.dict())
     db.add(nueva_cita_db)
     db.commit()
@@ -75,7 +113,7 @@ def registrar_procedimiento(proc: ProcedimientoBase, db: Session = Depends(get_d
     return nuevo_proc_db
 
 # ==========================================
-# NUEVO: REPORTE DE PACIENTES ATENDIDOS (EXCEL FILA 26)
+# REPORTE DE PACIENTES ATENDIDOS
 # ==========================================
 @router.get("/pacientes-atendidos")
 def ver_pacientes_atendidos(db: Session = Depends(get_db)):
