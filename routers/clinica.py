@@ -20,7 +20,7 @@ router = APIRouter(prefix="/clinica", tags=["Módulo Clínica (Grupo 2)"])
 # ==========================================
 # URLS DE MICROSERVICIOS EXTERNOS (SOA)
 # ==========================================
-URL_GRUPO3_DOCTORES = "https://serviciodoctor.onrender.com"
+URL_GRUPO1_DOCTORES = "https://serviciodoctor.onrender.com"
 
 # Esquema para recibir los datos del Login
 class LoginRequest(BaseModel):
@@ -60,25 +60,25 @@ def ver_agenda_doctor(doctor_id: int, db: Session = Depends(get_db)):
 
 @router.post("/cita", response_model=CitaResponse)
 def agendar_cita(cita: CitaBase, db: Session = Depends(get_db)):
-    """Orquesta la validación con el Grupo 3 y la disponibilidad de horarios"""
+    """Orquesta la validación con el Grupo 1 y la disponibilidad de horarios"""
     
-    # 1. CONSUMO SOA: Validar que el doctor existe y está activo en el Grupo 3
+    # 1. CONSUMO SOA: Validar que el doctor existe y está activo en el Grupo 1
     try:
-        respuesta_doctores = requests.get(f"{URL_GRUPO3_DOCTORES}/doctores?activo=true", timeout=5)
+        respuesta_doctores = requests.get(f"{URL_GRUPO1_DOCTORES}/doctores?activo=true", timeout=5)
         if respuesta_doctores.status_code == 200:
             doctores_activos = respuesta_doctores.json()
-            # Buscar si el doctor_id enviado existe en el JSON devuelto por el Grupo 3
+            # Buscar si el doctor_id enviado existe en el JSON devuelto por el Grupo 1
             doctor_existe = any(doc["id"] == cita.doctor_id for doc in doctores_activos)
             
             if not doctor_existe:
                 raise HTTPException(
                     status_code=400, 
-                    detail=f"Integración G3: El doctor con ID {cita.doctor_id} no existe o no está activo."
+                    detail=f"Integración G1: El doctor con ID {cita.doctor_id} no existe o no está activo."
                 )
         else:
-            raise HTTPException(status_code=503, detail="El microservicio del Grupo 3 no responde.")
+            raise HTTPException(status_code=503, detail="El microservicio del Grupo 1 no responde.")
     except requests.exceptions.RequestException:
-        raise HTTPException(status_code=503, detail="Error de conexión con el servidor del Grupo 3.")
+        raise HTTPException(status_code=503, detail="Error de conexión con el servidor del Grupo 1.")
 
     # 2. VALIDACIÓN DE DISPONIBILIDAD: Verificar cruce de horarios en nuestra BD
     cita_existente = db.query(CitaDB).filter(
