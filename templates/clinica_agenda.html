@@ -76,8 +76,10 @@
                                     <input type="number" class="form-control" id="pacienteId" placeholder="Ej: 105" required>
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label fw-bold">ID Doctor (Grupo 3)</label>
-                                    <input type="number" class="form-control" id="doctorId" placeholder="Ej: 20" required>
+                                    <label class="form-label fw-bold">Seleccionar Doctor (Grupo 3)</label>
+                                    <select class="form-select" id="doctorId" required>
+                                        <option value="">Cargando doctores desde G3...</option>
+                                    </select>
                                 </div>
                             </div>
                             <div class="row mb-4 g-3">
@@ -97,9 +99,9 @@
                                 <label class="form-label fw-bold">Motivo de la Consulta</label>
                                 <textarea class="form-control" id="motivo" rows="2" placeholder="Describa el motivo..."></textarea>
                             </div>
-                            <button type="submit" class="btn btn-primary w-100 py-2 fw-bold shadow-sm">Orquestar Registro de Cita</button>
+                            <button type="submit" class="btn btn-primary w-100 py-2 fw-bold shadow-sm">Verificar Disponibilidad y Agendar</button>
                         </form>
-                        <div id="mensajeCita" class="alert alert-success mt-3 d-none"></div>
+                        <div id="mensajeCita" class="alert mt-3 d-none"></div>
                     </div>
                 </div>
             </div>
@@ -217,6 +219,30 @@
             elemento.classList.add('active', 'bg-primary');
         }
 
+        // ==========================================
+        // NUEVO: CONSUMIR API DOCTORES PARA EL SELECT
+        // ==========================================
+        async function cargarDoctores() {
+            const selectDoctor = document.getElementById('doctorId');
+            try {
+                const res = await fetch('https://serviciodoctor.onrender.com/doctores?activo=true');
+                if (res.ok) {
+                    const doctores = await res.json();
+                    selectDoctor.innerHTML = '<option value="">Seleccione un doctor...</option>';
+                    doctores.forEach(doc => {
+                        selectDoctor.innerHTML += `<option value="${doc.id}">Dr. ${doc.nombres} ${doc.apellidos} - ${doc.especialidad}</option>`;
+                    });
+                } else {
+                    selectDoctor.innerHTML = '<option value="">Error cargando doctores</option>';
+                }
+            } catch (err) {
+                selectDoctor.innerHTML = '<option value="">No se pudo conectar al Grupo 3</option>';
+            }
+        }
+
+        // Cargar los doctores cuando inicie la página
+        document.addEventListener("DOMContentLoaded", cargarDoctores);
+
         // --- ENDPOINT POST /clinica/cita ---
         document.getElementById('formCita').addEventListener('submit', async function(e) {
             e.preventDefault();
@@ -236,17 +262,20 @@
                 body: JSON.stringify(payload)
             });
 
-            const data = await response.json();
+            // NUEVO: Lógica mejorada para atrapar mensajes de choque de horarios
             const msj = document.getElementById('mensajeCita');
-            msj.classList.remove('d-none', 'alert-danger', 'alert-success');
+            msj.className = 'alert mt-3'; // Resetear clases
             
             if (response.ok) {
+                const data = await response.json();
                 msj.classList.add('alert-success');
-                msj.textContent = `¡Cita ID: ${data.id} creada! Paciente ${data.paciente_id} asignado al Doctor ${data.doctor_id}.`;
+                msj.innerHTML = `<i class="bi bi-check-circle-fill"></i> ¡Cita orquestada con éxito! ID asignado: ${data.id}.`;
                 this.reset();
             } else {
+                const errorData = await response.json();
                 msj.classList.add('alert-danger');
-                msj.textContent = "Error de Validación de Contrato Pydantic.";
+                // Mostrar el error exacto que envía nuestro backend de Python (Ej: Doctor ocupado)
+                msj.innerHTML = `<i class="bi bi-x-circle-fill"></i> Validación Fallida: ${errorData.detail || "Error en el contrato"}`;
             }
         });
 
