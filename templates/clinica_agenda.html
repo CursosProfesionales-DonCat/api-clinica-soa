@@ -220,7 +220,7 @@
         }
 
         // ==========================================
-        // NUEVO: CONSUMIR API DOCTORES (GRUPO 1) PARA EL SELECT
+        // CONSUMIR API REAL DE DOCTORES (GRUPO 1)
         // ==========================================
         async function cargarDoctores() {
             const selectDoctor = document.getElementById('doctorId');
@@ -233,14 +233,13 @@
                         selectDoctor.innerHTML += `<option value="${doc.id}">Dr. ${doc.nombres} ${doc.apellidos} - ${doc.especialidad}</option>`;
                     });
                 } else {
-                    selectDoctor.innerHTML = '<option value="">Error cargando doctores</option>';
+                    selectDoctor.innerHTML = '<option value="">Error cargando catálogo desde G1</option>';
                 }
             } catch (err) {
                 selectDoctor.innerHTML = '<option value="">No se pudo conectar al Grupo 1</option>';
             }
         }
 
-        // Cargar los doctores cuando inicie la página
         document.addEventListener("DOMContentLoaded", cargarDoctores);
 
         // --- ENDPOINT POST /clinica/cita ---
@@ -263,7 +262,7 @@
             });
 
             const msj = document.getElementById('mensajeCita');
-            msj.className = 'alert mt-3'; // Resetear clases
+            msj.className = 'alert mt-3';
             
             if (response.ok) {
                 const data = await response.json();
