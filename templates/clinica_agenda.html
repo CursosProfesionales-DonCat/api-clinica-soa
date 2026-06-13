@@ -72,13 +72,13 @@
                         <form id="formCita">
                             <div class="row mb-3 g-3">
                                 <div class="col-md-6">
-                                    <label class="form-label fw-bold">ID Paciente (Grupo 1)</label>
+                                    <label class="form-label fw-bold">ID Paciente (Grupo 3)</label>
                                     <input type="number" class="form-control" id="pacienteId" placeholder="Ej: 105" required>
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label fw-bold">Seleccionar Doctor (Grupo 3)</label>
+                                    <label class="form-label fw-bold">Seleccionar Doctor (Grupo 1)</label>
                                     <select class="form-select" id="doctorId" required>
-                                        <option value="">Cargando doctores desde G3...</option>
+                                        <option value="">Cargando doctores desde G1...</option>
                                     </select>
                                 </div>
                             </div>
@@ -220,7 +220,7 @@
         }
 
         // ==========================================
-        // NUEVO: CONSUMIR API DOCTORES PARA EL SELECT
+        // NUEVO: CONSUMIR API DOCTORES (GRUPO 1) PARA EL SELECT
         // ==========================================
         async function cargarDoctores() {
             const selectDoctor = document.getElementById('doctorId');
@@ -236,7 +236,7 @@
                     selectDoctor.innerHTML = '<option value="">Error cargando doctores</option>';
                 }
             } catch (err) {
-                selectDoctor.innerHTML = '<option value="">No se pudo conectar al Grupo 3</option>';
+                selectDoctor.innerHTML = '<option value="">No se pudo conectar al Grupo 1</option>';
             }
         }
 
@@ -262,7 +262,6 @@
                 body: JSON.stringify(payload)
             });
 
-            // NUEVO: Lógica mejorada para atrapar mensajes de choque de horarios
             const msj = document.getElementById('mensajeCita');
             msj.className = 'alert mt-3'; // Resetear clases
             
@@ -274,7 +273,6 @@
             } else {
                 const errorData = await response.json();
                 msj.classList.add('alert-danger');
-                // Mostrar el error exacto que envía nuestro backend de Python (Ej: Doctor ocupado)
                 msj.innerHTML = `<i class="bi bi-x-circle-fill"></i> Validación Fallida: ${errorData.detail || "Error en el contrato"}`;
             }
         });
