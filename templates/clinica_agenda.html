@@ -77,11 +77,18 @@
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label fw-bold">Seleccionar Doctor (Grupo 1)</label>
-                                    <select class="form-select" id="doctorId" required>
+                                    <select class="form-select" id="doctorId" onchange="verificarHorariosDoctor()" required>
                                         <option value="">Cargando doctores desde G1...</option>
                                     </select>
                                 </div>
                             </div>
+
+                            <div class="mb-3 d-none" id="contenedorDisponibilidad">
+                                <label class="form-label fw-bold text-danger"><i class="bi bi-calendar-x-fill"></i> Horarios Ocupados de este Doctor (No seleccionar):</label>
+                                <div id="listaHorariosOcupados" class="d-flex flex-wrap gap-2 p-3 bg-light rounded border border-danger-subtle">
+                                    </div>
+                            </div>
+
                             <div class="row mb-4 g-3">
                                 <div class="col-md-6">
                                     <label class="form-label fw-bold">Sede Clínica</label>
@@ -176,7 +183,6 @@
     </div>
 
     <script>
-        // --- CONTROL DE ACCESO POR SERVIDOR ---
         if (localStorage.getItem('sesion_clinica') === 'activa') {
             document.getElementById('login-overlay').setAttribute('style', 'display: none !important;');
         }
@@ -211,7 +217,6 @@
             location.reload();
         }
 
-        // --- NAVEGACIÓN ---
         function cambiarVista(idVista, elemento) {
             document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.menu-link').forEach(el => el.classList.remove('active', 'bg-primary'));
@@ -219,9 +224,6 @@
             elemento.classList.add('active', 'bg-primary');
         }
 
-        // ==========================================
-        // CONSUMIR API REAL DE DOCTORES (GRUPO 1)
-        // ==========================================
         async function cargarDoctores() {
             const selectDoctor = document.getElementById('doctorId');
             try {
@@ -241,6 +243,48 @@
         }
 
         document.addEventListener("DOMContentLoaded", cargarDoctores);
+
+        // ==========================================
+        // NUEVO: VERIFICACIÓN DINÁMICA DE HORARIOS OCUPADOS
+        // ==========================================
+        async function verificarHorariosDoctor() {
+            const doctorId = document.getElementById('doctorId').value;
+            const contenedor = document.getElementById('contenedorDisponibilidad');
+            const lista = document.getElementById('listaHorariosOcupados');
+            
+            if (!doctorId) {
+                contenedor.classList.add('d-none');
+                return;
+            }
+
+            try {
+                // Consultamos a nuestro propio endpoint las citas de este doctor específico
+                const response = await fetch(`/clinica/citas/doctor/${doctorId}`);
+                if (response.ok) {
+                    const citas = await response.json();
+                    lista.innerHTML = "";
+                    
+                    if (citas.length === 0) {
+                        contenedor.classList.remove('d-none');
+                        lista.innerHTML = `<span class="badge bg-success p-2 fs-6 w-100 text-start"><i class="bi bi-check-circle-fill"></i> El doctor no tiene citas registradas. ¡Totalmente disponible!</span>`;
+                        return;
+                    }
+
+                    contenedor.classList.remove('d-none');
+                    citas.forEach(cita => {
+                        // Formateamos la fecha para que sea legible en Perú (ejemplo: 16/06/2026, 10:00 AM)
+                        const fechaObj = new Date(cita.fecha_hora);
+                        const fechaFormateada = fechaObj.toLocaleString('es-PE', {
+                            day: '2-digit', month: '2-digit', year: 'numeric',
+                            hour: '2-digit', minute: '2-digit', hour12: true
+                        });
+                        lista.innerHTML += `<span class="badge bg-danger p-2 fs-6 shadow-sm"><i class="bi bi-clock-history"></i> ${fechaFormateada}</span>`;
+                    });
+                }
+            } catch (err) {
+                console.error("Error consultando disponibilidad interna.");
+            }
+        }
 
         // --- ENDPOINT POST /clinica/cita ---
         document.getElementById('formCita').addEventListener('submit', async function(e) {
@@ -269,6 +313,8 @@
                 msj.classList.add('alert-success');
                 msj.innerHTML = `<i class="bi bi-check-circle-fill"></i> ¡Cita orquestada con éxito! ID asignado: ${data.id}.`;
                 this.reset();
+                // Refrescamos el panel de ocupación
+                verificarHorariosDoctor();
             } else {
                 const errorData = await response.json();
                 msj.classList.add('alert-danger');
