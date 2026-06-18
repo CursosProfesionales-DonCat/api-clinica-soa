@@ -10,108 +10,79 @@
     <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.bootstrap5.css" rel="stylesheet">
     
     <style>
+        :root {
+            --medical-primary: #005A9C;
+            --medical-sidebar: #0B2B46;
+            --medical-bg: #F4F7FB;
+            --medical-text: #2C3E50;
+        }
+
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f4f7fa; /* Fondo gris/azulado muy suave */
-            color: #334155;
-        }
-        
-        /* Paleta Médica: Azules y Celestes */
-        :root {
-            --medical-primary: #025997;
-            --medical-secondary: #0081c9;
-            --medical-accent: #e0f2fe;
-            --medical-dark: #0f172a;
-            --medical-sidebar: #013a63;
+            background-color: var(--medical-bg);
+            color: var(--medical-text);
         }
 
         .sidebar { 
             height: 100vh; 
-            background: linear-gradient(180deg, var(--medical-sidebar) 0%, var(--medical-primary) 100%); 
+            background: linear-gradient(180deg, var(--medical-sidebar) 0%, #0F3D64 100%); 
             color: white; 
             padding-top: 25px; 
             position: fixed; 
             width: 16.666667%; 
             box-shadow: 2px 0 10px rgba(0,0,0,0.1);
         }
-        .sidebar-brand {
-            font-size: 1.4rem;
+        
+        .sidebar h4 {
             font-weight: 700;
             letter-spacing: 0.5px;
-            color: #ffffff;
+            color: #E2F1FF;
             margin-bottom: 2rem;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
+
         .sidebar a { 
-            color: #cbd5e1; 
+            color: #A9C2D9; 
             text-decoration: none; 
             padding: 14px 22px; 
             display: block; 
             cursor: pointer; 
-            transition: all 0.3s ease; 
+            transition: all 0.3s ease;
             font-weight: 500;
             border-left: 4px solid transparent;
         }
-        .sidebar a:hover, .sidebar a.active { 
-            background-color: rgba(255, 255, 255, 0.1); 
-            color: #ffffff;
-            border-left: 4px solid #38bdf8; 
-        }
-        .sidebar a i {
-            font-size: 1.1rem;
-            width: 24px;
-            display: inline-block;
-        }
         
+        .sidebar a:hover, .sidebar a.active { 
+            background-color: rgba(255, 255, 255, 0.05); 
+            color: #FFFFFF;
+            border-left: 4px solid #4BB5FF;
+        }
+
         .topbar { 
             background-color: #ffffff; 
             padding: 18px 30px; 
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05); 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.03); 
             margin-left: 16.666667%; 
-            border-bottom: 1px solid #e2e8f0;
+            border-bottom: 1px solid #E9ECEF;
         }
-        .topbar h5 {
-            color: var(--medical-dark);
-            font-weight: 600;
-            letter-spacing: -0.3px;
-        }
-        
+
         .main-content { 
             min-height: 100vh; 
             padding: 35px 40px; 
             margin-left: 16.666667%; 
         }
-        
+
         /* Estilos de Tarjetas (Cards) */
         .card {
-            border-radius: 16px;
-            border: 1px solid #e2e8f0;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.03);
-            background-color: #ffffff;
-            transition: transform 0.2s ease;
-        }
-        .card-header {
-            background-color: transparent;
-            border-bottom: 1px solid #f1f5f9;
-            padding-bottom: 15px;
+            border-radius: 12px;
+            border: none;
+            box-shadow: 0 6px 15px rgba(0,0,0,0.04);
         }
         
-        /* Inputs y Selects */
-        .form-control, .form-select {
-            border-radius: 8px;
-            border: 1px solid #cbd5e1;
-            padding: 10px 14px;
-            font-size: 0.95rem;
-            transition: all 0.2s;
-        }
-        .form-control:focus, .form-select:focus {
-            border-color: var(--medical-secondary);
-            box-shadow: 0 0 0 0.25rem rgba(0, 129, 201, 0.15);
-        }
-        .form-label {
-            color: #475569;
-            font-size: 0.9rem;
-            margin-bottom: 0.4rem;
+        .card-header {
+            background-color: transparent;
+            border-bottom: 1px solid #F1F5F9;
+            padding-top: 1.5rem !important;
+            padding-bottom: 1rem !important;
         }
 
         /* Botones Profesionales */
@@ -119,72 +90,66 @@
             background-color: var(--medical-primary);
             border-color: var(--medical-primary);
             border-radius: 8px;
-            letter-spacing: 0.3px;
-            transition: all 0.3s ease;
+            font-weight: 600;
+            padding: 10px 20px;
         }
         .btn-primary:hover {
-            background-color: var(--medical-secondary);
-            border-color: var(--medical-secondary);
-            transform: translateY(-1px);
-            box-shadow: 0 4px 10px rgba(0, 129, 201, 0.3);
+            background-color: #00467A;
+            border-color: #00467A;
         }
-        
+
+        /* Inputs y Selects */
+        .form-control, .form-select {
+            border-radius: 8px;
+            padding: 10px 14px;
+            border: 1px solid #CED4DA;
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: var(--medical-primary);
+            box-shadow: 0 0 0 0.25rem rgba(0, 90, 156, 0.15);
+        }
+
         /* Tablas */
-        .table {
-            margin-bottom: 0;
-        }
-        .table > :not(caption) > * > * {
-            padding: 1rem 1rem;
-            border-bottom-color: #f1f5f9;
-        }
         .table-light th {
-            background-color: #f8fafc;
-            color: #64748b;
+            background-color: #F8FAFC;
+            color: #475569;
             font-weight: 600;
             text-transform: uppercase;
-            font-size: 0.75rem;
+            font-size: 0.8rem;
             letter-spacing: 0.5px;
+            border-bottom: 2px solid #E2E8F0;
         }
-        
-        /* Textos y Badges */
-        .text-primary { color: var(--medical-primary) !important; }
-        .bg-primary { background-color: var(--medical-primary) !important; }
-        .badge {
-            font-weight: 500;
-            padding: 0.4em 0.8em;
-            border-radius: 6px;
-        }
-        
-        /* Vistas */
+
         .view-section { display: none; animation: fadeIn 0.4s ease; }
         .view-section.active { display: block; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-
-        /* Login Elegante */
-        #login-overlay {
-            background: linear-gradient(135deg, var(--medical-sidebar) 0%, var(--medical-dark) 100%);
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
-        .login-card {
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
-            padding: 2rem !important;
+
+        /* Overlay Login */
+        #login-overlay {
+            background: linear-gradient(135deg, var(--medical-sidebar) 0%, var(--medical-primary) 100%);
         }
     </style>
 </head>
 <body>
 
     <div id="login-overlay" class="d-flex align-items-center justify-content-center" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999; display: flex !important;">
-        <div class="card login-card border-0" style="width: 100%; max-width: 420px; background: white;">
-            <div class="card-body text-center">
-                <div class="mb-3" style="color: var(--medical-secondary);"><i class="bi bi-heart-pulse-fill" style="font-size: 4rem;"></i></div>
-                <h3 class="fw-bold mb-1" style="color: var(--medical-dark);">ECOSALUD</h3>
-                <p class="text-muted small mb-4">Plataforma Clínica de Gestión Médica</p>
-                <div id="login-error" class="alert alert-danger d-none small py-2 fw-bold rounded-3"><i class="bi bi-exclamation-triangle-fill"></i> Credenciales inválidas</div>
+        <div class="card shadow-lg p-5 border-0" style="width: 100%; max-width: 420px; background: white; border-radius: 16px;">
+            <div class="card-body text-center p-0">
+                <div class="mb-3" style="color: var(--medical-primary);"><i class="bi bi-heart-pulse-fill" style="font-size: 4rem;"></i></div>
+                <h3 class="fw-bold mb-1" style="color: var(--medical-sidebar);">ECOSALUD</h3>
+                <p class="text-muted small mb-4">Módulo de Gestión Clínica Central</p>
+                
+                <div id="login-error" class="alert alert-danger d-none small py-2 fw-bold rounded-3"><i class="bi bi-exclamation-triangle-fill"></i> Credenciales inválidas en BD</div>
+                
                 <form id="formLogin">
                     <div class="mb-3 text-start">
-                        <label class="form-label small fw-bold text-secondary">Correo Institucional</label>
+                        <label class="form-label small fw-bold text-secondary">Usuario Administrador</label>
                         <div class="input-group">
-                            <span class="input-group-text bg-light border-end-0"><i class="bi bi-envelope text-muted"></i></span>
+                            <span class="input-group-text bg-light border-end-0"><i class="bi bi-person text-muted"></i></span>
                             <input type="email" id="loginUser" class="form-control border-start-0" placeholder="admin@ecosalud.com" required>
                         </div>
                     </div>
@@ -195,53 +160,51 @@
                             <input type="password" id="loginPass" class="form-control border-start-0" placeholder="••••••••" required>
                         </div>
                     </div>
-                    <button type="submit" class="btn btn-primary w-100 py-2 fw-bold fs-6">Ingresar al Sistema <i class="bi bi-arrow-right-short fs-5 align-middle"></i></button>
+                    <button type="submit" class="btn btn-primary w-100 py-2 fs-5 mt-2">Ingresar al Sistema <i class="bi bi-arrow-right-short"></i></button>
                 </form>
             </div>
         </div>
     </div>
 
     <div class="container-fluid p-0">
-        <div class="sidebar">
-            <div class="text-center sidebar-brand">
-                <i class="bi bi-heart-pulse-fill text-info me-2"></i>Clínica Sur
+        <div class="col-md-2 sidebar">
+            <h4 class="text-center"><i class="bi bi-hospital"></i> Clínica Sur</h4>
+            <div class="mt-4">
+                <a onclick="cambiarVista('vista-agendar', this)" class="menu-link active"><i class="bi bi-calendar-plus me-2"></i> Agendar Cita</a>
+                <a onclick="cambiarVista('vista-agenda', this)" class="menu-link"><i class="bi bi-list-check me-2"></i> Agenda Diaria</a>
+                <a onclick="cambiarVista('vista-procedimientos', this)" class="menu-link"><i class="bi bi-file-medical me-2"></i> Procedimientos</a>
             </div>
-            <div class="px-3 mb-3 text-uppercase text-info" style="font-size: 0.7rem; font-weight: 600; letter-spacing: 1px;">Módulos Médicos</div>
-            
-            <a onclick="cambiarVista('vista-agendar', this)" class="menu-link active"><i class="bi bi-calendar-plus me-2"></i> Agendar Cita</a>
-            <a onclick="cambiarVista('vista-agenda', this)" class="menu-link"><i class="bi bi-list-check me-2"></i> Agenda Diaria</a>
-            <a onclick="cambiarVista('vista-procedimientos', this)" class="menu-link"><i class="bi bi-file-medical me-2"></i> Procedimientos</a>
             
             <div style="position: absolute; bottom: 20px; width: 100%;">
-                <a onclick="cerrarSesion()" class="text-white-50 hover-white border-top border-secondary pt-3 mt-3 mx-3" style="padding-left: 10px !important;"><i class="bi bi-box-arrow-left me-2"></i> Cerrar Sesión</a>
+                <a onclick="cerrarSesion()" class="text-white-50 hover-white border-top border-secondary pt-3 mt-3 mx-3" style="padding-left: 10px !important;"><i class="bi bi-power me-2"></i> Cerrar Sesión</a>
             </div>
         </div>
 
         <div class="topbar d-flex justify-content-between align-items-center">
-            <h5 class="m-0"><i class="bi bi-grid-1x2-fill text-primary me-2"></i> API Gateway - Orquestador (Grupo 2)</h5>
+            <h5 class="m-0 fw-bold" style="color: var(--medical-sidebar);"><i class="bi bi-grid-1x2-fill text-primary me-2"></i> API Gateway - Orquestador (Grupo 2)</h5>
             <div>
-                <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 rounded-pill"><i class="bi bi-hdd-network-fill me-1"></i> Nodos Conectados y Sincronizados</span>
+                <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 rounded-pill"><i class="bi bi-check-circle-fill me-1"></i> Nodos Conectados</span>
             </div>
         </div>
 
         <div class="main-content">
             <div id="vista-agendar" class="view-section active">
                 <div class="card col-md-9 mx-auto">
-                    <div class="card-header pt-4 pb-2 text-center">
-                        <h4 class="text-primary fw-bold"><i class="bi bi-calendar2-plus me-2"></i>Nuevo Agendamiento</h4>
-                        <p class="text-muted small mb-0">Orquestación de servicios entre Grupo 1 (Doctores) y Grupo 3 (Pacientes)</p>
+                    <div class="card-header text-center">
+                        <h4 class="fw-bold" style="color: var(--medical-primary);"><i class="bi bi-calendar2-plus me-2"></i> Formulario de Agendamiento</h4>
+                        <p class="text-muted small mb-0">Conecta con los contratos del Grupo 1 y Grupo 3</p>
                     </div>
                     <div class="card-body p-4 p-md-5">
                         <form id="formCita">
                             <div class="row mb-4 g-4">
                                 <div class="col-md-6">
-                                    <label class="form-label fw-bold"><i class="bi bi-person-badge me-1"></i> Paciente (Grupo 3)</label>
+                                    <label class="form-label fw-bold"><i class="bi bi-person-badge me-1"></i> Seleccionar Paciente (G3)</label>
                                     <select class="form-select bg-light" id="pacienteId" required>
                                         <option value="">Cargando pacientes desde G3...</option>
                                     </select>
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label fw-bold"><i class="bi bi-heart-pulse me-1"></i> Doctor (Grupo 1)</label>
+                                    <label class="form-label fw-bold"><i class="bi bi-heart-pulse me-1"></i> Seleccionar Doctor (G1)</label>
                                     <select class="form-select bg-light" id="doctorId" onchange="verificarHorariosDoctor()" required>
                                         <option value="">Cargando doctores desde G1...</option>
                                     </select>
@@ -250,7 +213,7 @@
 
                             <div class="mb-4 d-none" id="contenedorDisponibilidad">
                                 <div class="p-3 bg-danger-subtle rounded-3 border border-danger-subtle">
-                                    <label class="form-label fw-bold text-danger mb-2"><i class="bi bi-clock-history me-1"></i> Horarios Ocupados (No seleccionar):</label>
+                                    <label class="form-label fw-bold text-danger mb-2"><i class="bi bi-calendar-x-fill me-1"></i> Horarios Ocupados de este Doctor:</label>
                                     <div id="listaHorariosOcupados" class="d-flex flex-wrap gap-2"></div>
                                 </div>
                             </div>
@@ -259,22 +222,22 @@
                                 <div class="col-md-6">
                                     <label class="form-label fw-bold"><i class="bi bi-building me-1"></i> Sede Clínica</label>
                                     <select class="form-select" id="sedeId">
-                                        <option value="1">Sede Central Ecosalud</option>
-                                        <option value="2">Sede Norte Especialidades</option>
+                                        <option value="1">Sede Central</option>
+                                        <option value="2">Sede Norte</option>
                                     </select>
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label fw-bold"><i class="bi bi-calendar-event me-1"></i> Fecha y Hora de Cita</label>
+                                    <label class="form-label fw-bold"><i class="bi bi-clock me-1"></i> Fecha y Hora</label>
                                     <input type="datetime-local" class="form-control" id="fechaHora" required>
                                 </div>
                             </div>
                             <div class="mb-4">
-                                <label class="form-label fw-bold"><i class="bi bi-clipboard2-pulse me-1"></i> Motivo de la Consulta</label>
-                                <textarea class="form-control" id="motivo" rows="3" placeholder="Describa brevemente los síntomas o el motivo principal..." required></textarea>
+                                <label class="form-label fw-bold"><i class="bi bi-clipboard-pulse me-1"></i> Motivo de la Consulta</label>
+                                <textarea class="form-control" id="motivo" rows="2" placeholder="Describa el motivo..."></textarea>
                             </div>
-                            <button type="submit" class="btn btn-primary w-100 py-3 fw-bold fs-6 rounded-3"><i class="bi bi-check-circle me-2"></i> Confirmar y Agendar Cita</button>
+                            <button type="submit" class="btn btn-primary w-100 py-3 mt-2 shadow-sm"><i class="bi bi-check2-circle me-1"></i> Verificar Disponibilidad y Agendar</button>
                         </form>
-                        <div id="mensajeCita" class="alert mt-4 d-none rounded-3 shadow-sm"></div>
+                        <div id="mensajeCita" class="alert mt-4 d-none rounded-3"></div>
                     </div>
                 </div>
             </div>
@@ -282,44 +245,40 @@
             <div id="vista-agenda" class="view-section">
                 <div class="card">
                     <div class="card-body p-4 p-md-5">
-                        <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
-                            <h4 class="text-primary fw-bold m-0"><i class="bi bi-journal-medical me-2"></i> Consultar Agenda Diaria</h4>
-                        </div>
-                        
+                        <h4 class="fw-bold mb-4 pb-3 border-bottom" style="color: var(--medical-primary);"><i class="bi bi-journal-medical me-2"></i> Consultar Agenda Diaria</h4>
                         <div class="row mb-4 g-3 bg-light p-3 rounded-3 border">
                             <div class="col-md-3">
                                 <label class="form-label small fw-bold text-muted">Filtrar por Fecha</label>
                                 <input type="date" class="form-control" id="fechaBusqueda">
                             </div>
                             <div class="col-md-3 d-flex align-items-end">
-                                <button onclick="buscarAgenda()" class="btn btn-secondary w-100 fw-bold"><i class="bi bi-search me-1"></i> Buscar Fecha</button>
+                                <button onclick="buscarAgenda()" class="btn btn-secondary w-100 fw-bold"><i class="bi bi-search me-1"></i> Por Fecha</button>
                             </div>
                             <div class="col-md-3">
-                                <label class="form-label small fw-bold text-muted">Filtrar por Especialista</label>
+                                <label class="form-label small fw-bold text-muted">Filtrar por Doctor</label>
                                 <select class="form-select" id="doctorBusqueda">
                                     <option value="">Cargando doctores desde G1...</option>
                                 </select>
                             </div>
                             <div class="col-md-3 d-flex align-items-end">
-                                <button onclick="buscarPorDoctor()" class="btn btn-info text-white w-100 fw-bold"><i class="bi bi-search me-1"></i> Buscar Doctor</button>
+                                <button onclick="buscarPorDoctor()" class="btn btn-info text-white w-100 fw-bold"><i class="bi bi-search me-1"></i> Por Doctor</button>
                             </div>
                         </div>
-                        
                         <div class="table-responsive border rounded-3">
                             <table class="table table-hover align-middle mb-0">
                                 <thead class="table-light">
                                     <tr>
                                         <th class="ps-3">ID Cita</th>
-                                        <th>Paciente</th>
-                                        <th>Doctor</th>
-                                        <th>Fecha y Hora</th>
+                                        <th>ID Paciente</th>
+                                        <th>ID Doctor</th>
+                                        <th>Hora / Fecha</th>
                                         <th>Motivo</th>
                                         <th>Estado</th>
-                                        <th class="pe-3 text-center">Acciones Clínicas</th> 
+                                        <th class="pe-3">Acciones</th> 
                                     </tr>
                                 </thead>
                                 <tbody id="tablaAgenda">
-                                    <tr><td colspan="7" class="text-center py-4 text-muted"><i class="bi bi-inbox fs-4 d-block mb-2"></i>Utilice los filtros superiores para cargar la agenda</td></tr>
+                                    <tr><td colspan="7" class="text-center py-4 text-muted"><i class="bi bi-inbox fs-4 d-block mb-2"></i>Utilice los filtros superiores para ver las citas</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -329,40 +288,39 @@
 
             <div id="vista-procedimientos" class="view-section">
                 <div class="card col-md-8 mx-auto">
-                    <div class="card-header pt-4 pb-2 text-center">
-                        <h4 class="text-primary fw-bold"><i class="bi bi-bandaid me-2"></i> Registrar Procedimiento Médico</h4>
-                        <p class="text-muted small mb-0">Asociar análisis, exámenes o intervenciones a una cita existente</p>
+                    <div class="card-header text-center">
+                        <h4 class="fw-bold" style="color: var(--medical-primary);"><i class="bi bi-file-medical me-2"></i> Registrar Procedimiento Médico</h4>
                     </div>
                     <div class="card-body p-4 p-md-5">
                         <form id="formProcedimiento">
                             <div class="row mb-4 g-4">
                                 <div class="col-md-6">
-                                    <label class="form-label fw-bold"><i class="bi bi-search me-1"></i> Cita de Origen (Buscar)</label>
+                                    <label class="form-label fw-bold"><i class="bi bi-search me-1"></i> ID Cita Origen (Buscar)</label>
                                     <select id="procCitaId" required placeholder="Seleccione o busque una cita...">
                                         <option value="">Cargando histórico de citas...</option>
                                     </select>
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label fw-bold"><i class="bi bi-person-check me-1"></i> Paciente Relacionado</label>
+                                    <label class="form-label fw-bold"><i class="bi bi-person-check me-1"></i> Seleccionar Paciente</label>
                                     <select class="form-select bg-light" id="procPacienteId" required>
                                         <option value="">Cargando pacientes desde G3...</option>
                                     </select>
                                 </div>
                             </div>
                             <div class="mb-4">
-                                <label class="form-label fw-bold"><i class="bi bi-clipboard2-plus me-1"></i> Nombre del Procedimiento / Examen</label>
-                                <input type="text" class="form-control" id="procNombre" placeholder="Ej: Ecografía Abdominal, Radiografía de Tórax..." required>
+                                <label class="form-label fw-bold"><i class="bi bi-clipboard2-plus me-1"></i> Nombre del Procedimiento</label>
+                                <input type="text" class="form-control" id="procNombre" placeholder="Ej: Radiografía Tórax" required>
                             </div>
                             <div class="mb-4">
-                                <label class="form-label fw-bold"><i class="bi bi-cash-stack me-1"></i> Costo Total (S/)</label>
+                                <label class="form-label fw-bold"><i class="bi bi-cash me-1"></i> Costo Total (S/)</label>
                                 <div class="input-group">
                                     <span class="input-group-text bg-light">S/</span>
-                                    <input type="number" step="0.01" class="form-control" id="procCosto" placeholder="0.00" required>
+                                    <input type="number" step="0.01" class="form-control border-start-0" id="procCosto" required>
                                 </div>
                             </div>
-                            <button type="submit" class="btn btn-success w-100 py-3 fw-bold fs-6 rounded-3"><i class="bi bi-save me-2"></i> Guardar Procedimiento en BD</button>
+                            <button type="submit" class="btn btn-success w-100 py-3 mt-2 fw-bold shadow-sm"><i class="bi bi-save me-1"></i> Guardar Procedimiento</button>
                         </form>
-                        <div id="mensajeProc" class="alert alert-success mt-4 d-none rounded-3 shadow-sm"></div>
+                        <div id="mensajeProc" class="alert alert-success mt-4 d-none rounded-3"></div>
                     </div>
                 </div>
             </div>
@@ -410,8 +368,7 @@
             document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.menu-link').forEach(el => el.classList.remove('active', 'bg-primary'));
             document.getElementById(idVista).classList.add('active');
-            // Mantenemos el estilo activo pero adaptado al nuevo CSS
-            elemento.classList.add('active');
+            elemento.classList.add('active', 'bg-primary');
         }
 
         // ==========================================
@@ -452,6 +409,7 @@
             } catch (err) { console.error("Error al cargar pacientes"); }
         }
 
+        // NUEVO: CARGAR TODAS LAS CITAS Y CONVERTIR A BUSCADOR (TOM SELECT)
         let buscadorCitasInstancia = null;
         async function cargarTodasLasCitasParaBuscador() {
             const selectCita = document.getElementById('procCitaId');
@@ -464,12 +422,14 @@
                     citas.forEach(cita => {
                         const fechaObj = new Date(cita.fecha_hora);
                         const fechaStr = fechaObj.toLocaleString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                        // Solo mostramos citas que no estén canceladas
                         if(cita.estado !== 'CANCELADA') {
                             opcionesHTML += `<option value="${cita.id}">Cita #${cita.id} | Paciente ID: ${cita.paciente_id} | ${fechaStr}</option>`;
                         }
                     });
                     selectCita.innerHTML = opcionesHTML;
                     
+                    // Inicializamos la librería del buscador
                     if(buscadorCitasInstancia) buscadorCitasInstancia.destroy();
                     buscadorCitasInstancia = new TomSelect("#procCitaId", {
                         create: false,
@@ -493,12 +453,11 @@
             try {
                 const res = await fetch(`/clinica/cita/${citaId}/estado?nuevo_estado=${nuevoEstado}`, { method: 'PUT' });
                 if (res.ok) {
-                    // Evitamos la alerta molesta y preferimos actualizar silenciosamente para mejor UX, pero la dejamos por seguridad visual
                     alert("Estado actualizado correctamente.");
                     if (document.getElementById('fechaBusqueda').value) buscarAgenda();
                     if (document.getElementById('doctorBusqueda').value) buscarPorDoctor();
                     verificarHorariosDoctor();
-                    cargarTodasLasCitasParaBuscador(); 
+                    cargarTodasLasCitasParaBuscador(); // Actualiza el select de procedimientos
                 } else {
                     alert("Error al intentar cambiar el estado.");
                 }
@@ -509,6 +468,7 @@
             const horaStr = new Date(cita.fecha_hora).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
             const fechaStr = new Date(cita.fecha_hora).toLocaleDateString();
             
+            // LÓGICA CORREGIDA PARA QUE RECONOZCA "AGENDADA"
             let badgeColor = 'bg-secondary';
             if (cita.estado === 'AGENDADA') badgeColor = 'bg-primary text-white';
             if (cita.estado === 'ATENDIDA') badgeColor = 'bg-success text-white';
@@ -517,27 +477,22 @@
             let botonesAccion = '';
             if (cita.estado === 'AGENDADA') {
                 botonesAccion = `
-                    <div class="d-flex justify-content-center gap-1">
-                        <button onclick="actualizarEstadoCita(${cita.id}, 'ATENDIDA')" class="btn btn-sm btn-outline-success py-1 px-2 small shadow-sm" title="Marcar Atendida"><i class="bi bi-check2-circle"></i></button>
-                        <button onclick="actualizarEstadoCita(${cita.id}, 'CANCELADA')" class="btn btn-sm btn-outline-danger py-1 px-2 small shadow-sm" title="Cancelar Cita"><i class="bi bi-x-circle"></i></button>
-                    </div>
+                    <button onclick="actualizarEstadoCita(${cita.id}, 'ATENDIDA')" class="btn btn-sm btn-outline-success py-0 px-2 small me-1 shadow-sm"><i class="bi bi-check-lg"></i> Atender</button>
+                    <button onclick="actualizarEstadoCita(${cita.id}, 'CANCELADA')" class="btn btn-sm btn-outline-danger py-0 px-2 small shadow-sm"><i class="bi bi-x-lg"></i> Cancelar</button>
                 `;
             } else {
-                botonesAccion = `<div class="text-center"><span class="text-muted small fw-medium"><em><i class="bi bi-journal-check me-1"></i>${cita.estado.charAt(0) + cita.estado.slice(1).toLowerCase()}</em></span></div>`;
+                botonesAccion = `<span class="text-muted small"><em>${cita.estado.charAt(0) + cita.estado.slice(1).toLowerCase()}</em></span>`;
             }
 
             return `
                 <tr>
-                    <td class="fw-bold text-primary ps-3">#${cita.id}</td>
-                    <td><span class="badge bg-light text-dark border border-secondary-subtle">PCT-${cita.paciente_id}</span></td>
-                    <td><span class="badge bg-info-subtle text-info-emphasis border border-info-subtle">DOC-${cita.doctor_id}</span></td>
-                    <td>
-                        <div class="fw-medium">${fechaStr}</div>
-                        <div class="small text-muted"><i class="bi bi-clock me-1"></i>${horaStr}</div>
-                    </td>
-                    <td><div class="text-truncate" style="max-width: 200px;" title="${cita.motivo || 'Sin detalle'}">${cita.motivo || 'Sin detalle'}</div></td>
-                    <td><span class="badge ${badgeColor} rounded-pill px-3">${cita.estado}</span></td>
-                    <td class="pe-3">${botonesAccion}</td>
+                    <td class="fw-bold text-primary">#${cita.id}</td>
+                    <td><span class="badge bg-secondary">PCT-${cita.paciente_id}</span></td>
+                    <td><span class="badge bg-info text-dark">DOC-${cita.doctor_id}</span></td>
+                    <td>${fechaStr} ${horaStr}</td>
+                    <td>${cita.motivo || 'Sin detalle'}</td>
+                    <td><span class="badge ${badgeColor}">${cita.estado}</span></td>
+                    <td>${botonesAccion}</td>
                 </tr>
             `;
         }
@@ -557,14 +512,14 @@
                     
                     if (citasOcupadas.length === 0) {
                         contenedor.classList.remove('d-none');
-                        lista.innerHTML = `<span class="badge bg-success-subtle text-success border border-success-subtle p-2 px-3 w-100 text-start"><i class="bi bi-check-circle-fill me-2"></i>El especialista tiene la agenda libre. ¡Totalmente disponible!</span>`;
+                        lista.innerHTML = `<span class="badge bg-success p-2 fs-6 w-100 text-start"><i class="bi bi-check-circle-fill"></i> El doctor no tiene citas ocupadas. ¡Totalmente disponible!</span>`;
                         return;
                     }
                     contenedor.classList.remove('d-none');
                     citasOcupadas.forEach(cita => {
                         const fechaObj = new Date(cita.fecha_hora);
                         const fechaFormateada = fechaObj.toLocaleString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
-                        lista.innerHTML += `<span class="badge bg-white text-danger border border-danger p-2 shadow-sm"><i class="bi bi-clock-history me-1"></i> ${fechaFormateada}</span>`;
+                        lista.innerHTML += `<span class="badge bg-danger p-2 fs-6 shadow-sm"><i class="bi bi-clock-history"></i> ${fechaFormateada}</span>`;
                     });
                 }
             } catch (err) { console.error(err); }
@@ -579,20 +534,19 @@
             };
             const response = await fetch('/clinica/cita', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
             const msj = document.getElementById('mensajeCita');
-            msj.className = 'alert mt-3 rounded-3 shadow-sm';
+            msj.className = 'alert mt-3';
             if (response.ok) {
                 const data = await response.json();
                 msj.classList.add('alert-success');
-                msj.innerHTML = `<i class="bi bi-check-circle-fill me-2"></i> ¡Cita orquestada con éxito! ID asignado: <strong>${data.id}</strong>.`;
+                msj.innerHTML = `<i class="bi bi-check-circle-fill"></i> ¡Cita orquestada con éxito! ID asignado: ${data.id}.`;
                 this.reset(); 
                 verificarHorariosDoctor();
-                cargarTodasLasCitasParaBuscador(); 
+                cargarTodasLasCitasParaBuscador(); // Refrescar el buscador
             } else {
                 const errorData = await response.json();
                 msj.classList.add('alert-danger');
-                msj.innerHTML = `<i class="bi bi-x-circle-fill me-2"></i> Validación Fallida: ${errorData.detail || "Error en el contrato"}`;
+                msj.innerHTML = `<i class="bi bi-x-circle-fill"></i> Validación Fallida: ${errorData.detail || "Error en el contrato"}`;
             }
-            msj.classList.remove('d-none');
         });
 
         async function buscarAgenda() {
@@ -602,7 +556,7 @@
             const citas = await response.json();
             const tbody = document.getElementById('tablaAgenda');
             tbody.innerHTML = "";
-            if(citas.length === 0) { tbody.innerHTML = "<tr><td colspan='7' class='text-center py-4 text-muted'><i class="bi bi-calendar2-x fs-4 d-block mb-2"></i>No hay citas agendadas para esta fecha.</td></tr>"; return; }
+            if(citas.length === 0) { tbody.innerHTML = "<tr><td colspan='7' class='text-center text-muted'>No hay citas registradas.</td></tr>"; return; }
             citas.forEach(cita => { tbody.innerHTML += construirFilaTabla(cita); });
         }
 
@@ -614,12 +568,12 @@
             const msj = document.getElementById('mensajeProc');
             msj.classList.remove('d-none');
             if (response.ok) { 
-                msj.className = 'alert alert-success mt-4 rounded-3 shadow-sm'; 
-                msj.innerHTML = `<i class="bi bi-check-circle-fill me-2"></i> Procedimiento registrado exitosamente con ID: <strong>${data.id}</strong>.`; 
+                msj.className = 'alert alert-success mt-3'; 
+                msj.textContent = `Procedimiento registrado exitosamente con ID: ${data.id}.`; 
                 this.reset();
-                if(buscadorCitasInstancia) buscadorCitasInstancia.clear();
+                if(buscadorCitasInstancia) buscadorCitasInstancia.clear(); // Limpia el buscador visualmente
             }
-            else { msj.className = 'alert alert-danger mt-4 rounded-3 shadow-sm'; msj.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-2"></i>Error al guardar el procedimiento.`; }
+            else { msj.className = 'alert alert-danger mt-3'; msj.textContent = "Error al guardar el procedimiento."; }
         });
 
         async function buscarPorDoctor() {
@@ -629,7 +583,7 @@
             const citas = await response.json();
             const tbody = document.getElementById('tablaAgenda');
             tbody.innerHTML = "";
-            if(citas.length === 0) { tbody.innerHTML = "<tr><td colspan='7' class='text-center py-4 text-muted'><i class="bi bi-journal-x fs-4 d-block mb-2"></i>No hay citas históricas para este especialista.</td></tr>"; return; }
+            if(citas.length === 0) { tbody.innerHTML = "<tr><td colspan='7' class='text-center text-muted'>No hay citas para este doctor.</td></tr>"; return; }
             citas.forEach(cita => { tbody.innerHTML += construirFilaTabla(cita); });
         }
     </script>
