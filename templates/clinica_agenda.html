@@ -189,6 +189,7 @@
     </div>
 
     <script>
+        // --- CONTROL DE ACCESO ---
         if (localStorage.getItem('sesion_clinica') === 'activa') {
             document.getElementById('login-overlay').setAttribute('style', 'display: none !important;');
         }
@@ -230,6 +231,9 @@
             elemento.classList.add('active', 'bg-primary');
         }
 
+        // ==========================================
+        // CARGAR DOCTORES Y PACIENTES
+        // ==========================================
         async function cargarDoctores() {
             const selectDoctor = document.getElementById('doctorId');
             const selectDoctorBusqueda = document.getElementById('doctorBusqueda');
@@ -243,13 +247,9 @@
                     });
                     selectDoctor.innerHTML = opcionesHTML;
                     selectDoctorBusqueda.innerHTML = '<option value="">Filtre por doctor...</option>' + opcionesHTML.replace('<option value="">Seleccione un doctor...</option>', '');
-                } else {
-                    selectDoctor.innerHTML = '<option value="">Error cargando catálogo desde G1</option>';
-                    selectDoctorBusqueda.innerHTML = '<option value="">Error cargando catálogo desde G1</option>';
                 }
             } catch (err) {
-                selectDoctor.innerHTML = '<option value="">No se pudo conectar al Grupo 1</option>';
-                selectDoctorBusqueda.innerHTML = '<option value="">No se pudo conectar al Grupo 1</option>';
+                console.error("Error al cargar doctores");
             }
         }
 
@@ -267,13 +267,9 @@
                     });
                     selectPacienteCita.innerHTML = opcionesHTML;
                     selectPacienteProc.innerHTML = opcionesHTML;
-                } else {
-                    selectPacienteCita.innerHTML = '<option value="">Error cargando pacientes G3</option>';
-                    selectPacienteProc.innerHTML = '<option value="">Error cargando pacientes G3</option>';
                 }
             } catch (err) {
-                selectPacienteCita.innerHTML = '<option value="">A la espera de encender G3...</option>';
-                selectPacienteProc.innerHTML = '<option value="">A la espera de encender G3...</option>';
+                console.error("Error al cargar pacientes");
             }
         }
 
@@ -283,7 +279,7 @@
         });
 
         // ==========================================
-        // NUEVO: CONTROLADOR ASÍNCRONO DE CAMBIO DE ESTADO (PUT)
+        // CONTROLADOR DE CAMBIO DE ESTADO CON BOTONES
         // ==========================================
         async function actualizarEstadoCita(citaId, nuevoEstado) {
             if (!confirm(`¿Está seguro de cambiar el estado de la cita #${citaId} a ${nuevoEstado}?`)) return;
@@ -295,9 +291,10 @@
 
                 if (res.ok) {
                     alert("Estado actualizado correctamente.");
-                    // Refrescamos automáticamente la tabla en la que nos encontremos
+                    // Refrescar la tabla actual
                     if (document.getElementById('fechaBusqueda').value) buscarAgenda();
                     if (document.getElementById('doctorBusqueda').value) buscarPorDoctor();
+                    verificarHorariosDoctor();
                 } else {
                     alert("Error al intentar cambiar el estado de la cita.");
                 }
@@ -306,25 +303,23 @@
             }
         }
 
-        // FUNCIÓN AUXILIAR PARA RENDERIZAR BADGES Y BOTONES DE ACCIÓN EN LAS TABLAS
+        // FUNCIÓN QUE CONSTRUYE LAS FILAS Y LOS BOTONES
         function construirFilaTabla(cita) {
             const horaStr = new Date(cita.fecha_hora).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
             const fechaStr = new Date(cita.fecha_hora).toLocaleDateString();
             
-            // 1. Estilo dinámico del Badge de Estado
-            let badgeColor = 'bg-warning';
+            let badgeColor = 'bg-warning text-dark';
             if (cita.estado === 'ATENDIDO') badgeColor = 'bg-success';
             if (cita.estado === 'CANCELADO') badgeColor = 'bg-danger';
 
-            // 2. Construcción dinámica de botones de acción según estado actual
             let botonesAccion = '';
             if (cita.estado === 'PENDIENTE') {
                 botonesAccion = `
-                    <button onclick="actualizarEstadoCita(${cita.id}, 'ATENDIDO')" class="btn btn-sm btn-outline-success py-0 px-2 small me-1 shadow-sm" title="Marcar como Atendido"><i class="bi bi-check-lg"></i> Atender</button>
-                    <button onclick="actualizarEstadoCita(${cita.id}, 'CANCELADO')" class="btn btn-sm btn-outline-danger py-0 px-2 small shadow-sm" title="Cancelar Cita"><i class="bi bi-x-lg"></i> Cancelar</button>
+                    <button onclick="actualizarEstadoCita(${cita.id}, 'ATENDIDO')" class="btn btn-sm btn-outline-success py-0 px-2 small me-1 shadow-sm"><i class="bi bi-check-lg"></i> Atender</button>
+                    <button onclick="actualizarEstadoCita(${cita.id}, 'CANCELADO')" class="btn btn-sm btn-outline-danger py-0 px-2 small shadow-sm"><i class="bi bi-x-lg"></i> Cancelar</button>
                 `;
             } else {
-                botonesAccion = `<span class="text-muted small italic">Finalizado</span>`;
+                botonesAccion = `<span class="text-muted small"><em>Finalizado</em></span>`;
             }
 
             return `
@@ -351,7 +346,6 @@
                 if (response.ok) {
                     const citas = await response.json();
                     lista.innerHTML = "";
-                    // Solo listamos las citas que estén realmente ocupando el espacio (Excluimos CANCELADO)
                     const citasOcupadas = citas.filter(c => c.estado !== 'CANCELADO');
                     
                     if (citasOcupadas.length === 0) {
