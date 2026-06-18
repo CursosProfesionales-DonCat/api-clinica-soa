@@ -21,7 +21,7 @@ router = APIRouter(prefix="/clinica", tags=["Módulo Clínica (Grupo 2)"])
 # URLS DE MICROSERVICIOS EXTERNOS (SOA)
 # ==========================================
 URL_GRUPO1_DOCTORES = "https://serviciodoctor.onrender.com"
-URL_GRUPO3_PACIENTES = "AQUI_PON_LA_URL_DEL_GRUPO_3_PACIENTES" 
+URL_GRUPO3_PACIENTES = "https://backend-ecosalud.onrender.com" 
 
 # Esquema para recibir los datos del Login
 class LoginRequest(BaseModel):
