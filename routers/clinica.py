@@ -21,7 +21,6 @@ router = APIRouter(prefix="/clinica", tags=["Módulo Clínica (Grupo 2)"])
 # URLS DE MICROSERVICIOS EXTERNOS (SOA)
 # ==========================================
 URL_GRUPO1_DOCTORES = "https://serviciodoctor.onrender.com"
-# AÑADIR LA URL DEL GRUPO 3 CUANDO TE LA PASEN. EJEMPLO: "https://backend-ecosalud.onrender.com"
 URL_GRUPO3_PACIENTES = "AQUI_PON_LA_URL_DEL_GRUPO_3_PACIENTES" 
 
 # Esquema para recibir los datos del Login
@@ -57,7 +56,7 @@ def ver_agenda_doctor(doctor_id: int, db: Session = Depends(get_db)):
     return citas_bd
 
 # ==========================================
-# RUTAS DE NEGOCIO (ORQUESTACIÓN)
+# RUTAS DE NEGOCIO (ORQUESTACIÓN Y ESTADOS)
 # ==========================================
 
 @router.post("/cita", response_model=CitaResponse)
@@ -81,26 +80,7 @@ def agendar_cita(cita: CitaBase, db: Session = Depends(get_db)):
     except requests.exceptions.RequestException:
         raise HTTPException(status_code=503, detail="Error de conexión con el servidor del Grupo 1.")
 
-    # 2. CONSUMO SOA: Validar que el paciente existe en el Grupo 3 (Descomentar cuando tengas la URL)
-    '''
-    try:
-        respuesta_pacientes = requests.get(f"{URL_GRUPO3_PACIENTES}/pacientes", timeout=5)
-        if respuesta_pacientes.status_code == 200:
-            pacientes_lista = respuesta_pacientes.json()
-            paciente_existe = any(pac["id"] == cita.paciente_id for pac in pacientes_lista)
-            
-            if not paciente_existe:
-                raise HTTPException(
-                    status_code=400, 
-                    detail=f"Integración G3: El paciente con ID {cita.paciente_id} no existe."
-                )
-        else:
-            raise HTTPException(status_code=503, detail="El microservicio del Grupo 3 no responde.")
-    except requests.exceptions.RequestException:
-        raise HTTPException(status_code=503, detail="Error de conexión con el servidor del Grupo 3.")
-    '''
-
-    # 3. VALIDACIÓN DE DISPONIBILIDAD: Verificar cruce de horarios en nuestra BD
+    # 2. VALIDACIÓN DE DISPONIBILIDAD: Verificar cruce de horarios en nuestra BD
     cita_existente = db.query(CitaDB).filter(
         CitaDB.doctor_id == cita.doctor_id,
         CitaDB.fecha_hora == cita.fecha_hora
@@ -112,12 +92,31 @@ def agendar_cita(cita: CitaBase, db: Session = Depends(get_db)):
             detail=f"Conflicto de Agenda: El doctor {cita.doctor_id} ya tiene una cita reservada para ese exacto horario."
         )
 
-    # 4. GUARDAR: Si pasa las validaciones, se orquesta y se guarda la cita
+    # 3. GUARDAR: Si pasa las validaciones, se guarda la cita por defecto como PENDIENTE
     nueva_cita_db = CitaDB(**cita.dict())
     db.add(nueva_cita_db)
     db.commit()
     db.refresh(nueva_cita_db)
     return nueva_cita_db
+
+
+@router.put("/cita/{cita_id}/estado")
+def actualizar_estado_cita(cita_id: int, nuevo_estado: str, db: Session = Depends(get_db)):
+    """NUEVO ENDPOINT: Cambia el estado de una cita (PENDIENTE, ATENDIDO, CANCELADO)"""
+    estados_validos = ["PENDIENTE", "ATENDIDO", "CANCELADO"]
+    nuevo_estado = nuevo_estado.upper()
+    
+    if nuevo_estado not in estados_validos:
+        raise HTTPException(status_code=400, detail="Estado inválido. Use PENDIENTE, ATENDIDO o CANCELADO.")
+        
+    cita = db.query(CitaDB).filter(CitaDB.id == cita_id).first()
+    if not cita:
+        raise HTTPException(status_code=404, detail="La cita especificada no existe.")
+        
+    cita.estado = nuevo_estado
+    db.commit()
+    return {"status": "success", "message": f"Cita #{cita_id} cambiada a estado {nuevo_estado}"}
+
 
 @router.get("/citas/{fecha}", response_model=list[CitaResponse])
 def ver_agenda_diaria(fecha: date, db: Session = Depends(get_db)):
