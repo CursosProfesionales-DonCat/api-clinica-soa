@@ -72,8 +72,10 @@
                         <form id="formCita">
                             <div class="row mb-3 g-3">
                                 <div class="col-md-6">
-                                    <label class="form-label fw-bold">ID Paciente (Grupo 3)</label>
-                                    <input type="number" class="form-control" id="pacienteId" placeholder="Ej: 105" required>
+                                    <label class="form-label fw-bold">Seleccionar Paciente (Grupo 3)</label>
+                                    <select class="form-select" id="pacienteId" required>
+                                        <option value="">Cargando pacientes desde G3...</option>
+                                    </select>
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label fw-bold">Seleccionar Doctor (Grupo 1)</label>
@@ -86,7 +88,7 @@
                             <div class="mb-3 d-none" id="contenedorDisponibilidad">
                                 <label class="form-label fw-bold text-danger"><i class="bi bi-calendar-x-fill"></i> Horarios Ocupados de este Doctor (No seleccionar):</label>
                                 <div id="listaHorariosOcupados" class="d-flex flex-wrap gap-2 p-3 bg-light rounded border border-danger-subtle">
-                                    </div>
+                                </div>
                             </div>
 
                             <div class="row mb-4 g-3">
@@ -161,8 +163,10 @@
                                     <input type="number" class="form-control" id="procCitaId" required>
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label fw-bold">ID Paciente</label>
-                                    <input type="number" class="form-control" id="procPacienteId" required>
+                                    <label class="form-label fw-bold">Seleccionar Paciente</label>
+                                    <select class="form-select" id="procPacienteId" required>
+                                        <option value="">Cargando pacientes desde G3...</option>
+                                    </select>
                                 </div>
                             </div>
                             <div class="mb-3">
@@ -224,6 +228,9 @@
             elemento.classList.add('active', 'bg-primary');
         }
 
+        // ==========================================
+        // CONSUMIR API DE DOCTORES (GRUPO 1)
+        // ==========================================
         async function cargarDoctores() {
             const selectDoctor = document.getElementById('doctorId');
             try {
@@ -242,10 +249,45 @@
             }
         }
 
-        document.addEventListener("DOMContentLoaded", cargarDoctores);
+        // ==========================================
+        // CONSUMIR API DE PACIENTES (GRUPO 3)
+        // ==========================================
+        async function cargarPacientes() {
+            const selectPacienteCita = document.getElementById('pacienteId');
+            const selectPacienteProc = document.getElementById('procPacienteId');
+            
+            try {
+                // AQUÍ REEMPLAZAS CON LA URL REAL DEL GRUPO 3 CUANDO TE LA DEN
+                const res = await fetch('AQUI_PON_LA_URL_DEL_GRUPO_3_PACIENTES/pacientes'); 
+                if (res.ok) {
+                    const pacientes = await res.json();
+                    let opcionesHTML = '<option value="">Seleccione un paciente...</option>';
+                    
+                    pacientes.forEach(pac => {
+                        const nombreFinal = pac.nombres ? `${pac.nombres} ${pac.apellidos}` : (pac.nombre || `Paciente ID: ${pac.id}`);
+                        opcionesHTML += `<option value="${pac.id}">${nombreFinal}</option>`;
+                    });
+
+                    selectPacienteCita.innerHTML = opcionesHTML;
+                    selectPacienteProc.innerHTML = opcionesHTML;
+                } else {
+                    selectPacienteCita.innerHTML = '<option value="">Error cargando pacientes G3</option>';
+                    selectPacienteProc.innerHTML = '<option value="">Error cargando pacientes G3</option>';
+                }
+            } catch (err) {
+                selectPacienteCita.innerHTML = '<option value="">A la espera de encender G3...</option>';
+                selectPacienteProc.innerHTML = '<option value="">A la espera de encender G3...</option>';
+            }
+        }
+
+        // Cargar los selects automáticamente al entrar a la página
+        document.addEventListener("DOMContentLoaded", () => {
+            cargarDoctores();
+            cargarPacientes();
+        });
 
         // ==========================================
-        // NUEVO: VERIFICACIÓN DINÁMICA DE HORARIOS OCUPADOS
+        // VERIFICACIÓN DINÁMICA DE HORARIOS OCUPADOS
         // ==========================================
         async function verificarHorariosDoctor() {
             const doctorId = document.getElementById('doctorId').value;
@@ -258,7 +300,6 @@
             }
 
             try {
-                // Consultamos a nuestro propio endpoint las citas de este doctor específico
                 const response = await fetch(`/clinica/citas/doctor/${doctorId}`);
                 if (response.ok) {
                     const citas = await response.json();
@@ -272,7 +313,6 @@
 
                     contenedor.classList.remove('d-none');
                     citas.forEach(cita => {
-                        // Formateamos la fecha para que sea legible en Perú (ejemplo: 16/06/2026, 10:00 AM)
                         const fechaObj = new Date(cita.fecha_hora);
                         const fechaFormateada = fechaObj.toLocaleString('es-PE', {
                             day: '2-digit', month: '2-digit', year: 'numeric',
@@ -313,7 +353,6 @@
                 msj.classList.add('alert-success');
                 msj.innerHTML = `<i class="bi bi-check-circle-fill"></i> ¡Cita orquestada con éxito! ID asignado: ${data.id}.`;
                 this.reset();
-                // Refrescamos el panel de ocupación
                 verificarHorariosDoctor();
             } else {
                 const errorData = await response.json();
