@@ -142,10 +142,10 @@
                                         <th>ID Cita</th>
                                         <th>ID Paciente</th>
                                         <th>ID Doctor</th>
-                                        <th>Hora</th>
+                                        <th>Hora / Fecha</th>
                                         <th>Motivo</th>
                                         <th>Estado</th>
-                                    </tr>
+                                        <th>Acciones</th> </tr>
                                 </thead>
                                 <tbody id="tablaAgenda"></tbody>
                             </table>
@@ -189,7 +189,6 @@
     </div>
 
     <script>
-        // --- CONTROL DE ACCESO ---
         if (localStorage.getItem('sesion_clinica') === 'activa') {
             document.getElementById('login-overlay').setAttribute('style', 'display: none !important;');
         }
@@ -231,24 +230,17 @@
             elemento.classList.add('active', 'bg-primary');
         }
 
-        // ==========================================
-        // CONSUMIR API DE DOCTORES (GRUPO 1)
-        // ==========================================
         async function cargarDoctores() {
             const selectDoctor = document.getElementById('doctorId');
-            const selectDoctorBusqueda = document.getElementById('doctorBusqueda'); // Nuevo Select en la agenda
-            
+            const selectDoctorBusqueda = document.getElementById('doctorBusqueda');
             try {
                 const res = await fetch('https://serviciodoctor.onrender.com/doctores?activo=true');
                 if (res.ok) {
                     const doctores = await res.json();
                     let opcionesHTML = '<option value="">Seleccione un doctor...</option>';
-                    
                     doctores.forEach(doc => {
                         opcionesHTML += `<option value="${doc.id}">Dr. ${doc.nombres} ${doc.apellidos} - ${doc.especialidad}</option>`;
                     });
-                    
-                    // Llenamos ambos selectores con la misma data del Grupo 1
                     selectDoctor.innerHTML = opcionesHTML;
                     selectDoctorBusqueda.innerHTML = '<option value="">Filtre por doctor...</option>' + opcionesHTML.replace('<option value="">Seleccione un doctor...</option>', '');
                 } else {
@@ -261,25 +253,18 @@
             }
         }
 
-        // ==========================================
-        // CONSUMIR API DE PACIENTES (GRUPO 3)
-        // ==========================================
         async function cargarPacientes() {
             const selectPacienteCita = document.getElementById('pacienteId');
             const selectPacienteProc = document.getElementById('procPacienteId');
-            
             try {
-                // RECUERDA: AQUÍ PONES LA URL REAL DEL GRUPO 3
                 const res = await fetch('AQUI_PON_LA_URL_DEL_GRUPO_3_PACIENTES/pacientes'); 
                 if (res.ok) {
                     const pacientes = await res.json();
                     let opcionesHTML = '<option value="">Seleccione un paciente...</option>';
-                    
                     pacientes.forEach(pac => {
                         const nombreFinal = pac.nombres ? `${pac.nombres} ${pac.apellidos}` : (pac.nombre || `Paciente ID: ${pac.id}`);
                         opcionesHTML += `<option value="${pac.id}">${nombreFinal}</option>`;
                     });
-
                     selectPacienteCita.innerHTML = opcionesHTML;
                     selectPacienteProc.innerHTML = opcionesHTML;
                 } else {
@@ -292,80 +277,113 @@
             }
         }
 
-        // Ejecutar funciones al cargar
         document.addEventListener("DOMContentLoaded", () => {
             cargarDoctores();
             cargarPacientes();
         });
 
         // ==========================================
-        // VERIFICACIÓN DINÁMICA DE HORARIOS OCUPADOS
+        // NUEVO: CONTROLADOR ASÍNCRONO DE CAMBIO DE ESTADO (PUT)
         // ==========================================
+        async function actualizarEstadoCita(citaId, nuevoEstado) {
+            if (!confirm(`¿Está seguro de cambiar el estado de la cita #${citaId} a ${nuevoEstado}?`)) return;
+
+            try {
+                const res = await fetch(`/clinica/cita/${citaId}/estado?nuevo_estado=${nuevoEstado}`, {
+                    method: 'PUT'
+                });
+
+                if (res.ok) {
+                    alert("Estado actualizado correctamente.");
+                    // Refrescamos automáticamente la tabla en la que nos encontremos
+                    if (document.getElementById('fechaBusqueda').value) buscarAgenda();
+                    if (document.getElementById('doctorBusqueda').value) buscarPorDoctor();
+                } else {
+                    alert("Error al intentar cambiar el estado de la cita.");
+                }
+            } catch (err) {
+                alert("Error de red al conectar con el servidor Gateway.");
+            }
+        }
+
+        // FUNCIÓN AUXILIAR PARA RENDERIZAR BADGES Y BOTONES DE ACCIÓN EN LAS TABLAS
+        function construirFilaTabla(cita) {
+            const horaStr = new Date(cita.fecha_hora).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            const fechaStr = new Date(cita.fecha_hora).toLocaleDateString();
+            
+            // 1. Estilo dinámico del Badge de Estado
+            let badgeColor = 'bg-warning';
+            if (cita.estado === 'ATENDIDO') badgeColor = 'bg-success';
+            if (cita.estado === 'CANCELADO') badgeColor = 'bg-danger';
+
+            // 2. Construcción dinámica de botones de acción según estado actual
+            let botonesAccion = '';
+            if (cita.estado === 'PENDIENTE') {
+                botonesAccion = `
+                    <button onclick="actualizarEstadoCita(${cita.id}, 'ATENDIDO')" class="btn btn-sm btn-outline-success py-0 px-2 small me-1 shadow-sm" title="Marcar como Atendido"><i class="bi bi-check-lg"></i> Atender</button>
+                    <button onclick="actualizarEstadoCita(${cita.id}, 'CANCELADO')" class="btn btn-sm btn-outline-danger py-0 px-2 small shadow-sm" title="Cancelar Cita"><i class="bi bi-x-lg"></i> Cancelar</button>
+                `;
+            } else {
+                botonesAccion = `<span class="text-muted small italic">Finalizado</span>`;
+            }
+
+            return `
+                <tr>
+                    <td class="fw-bold text-primary">#${cita.id}</td>
+                    <td><span class="badge bg-secondary">PCT-${cita.paciente_id}</span></td>
+                    <td><span class="badge bg-info text-dark">DOC-${cita.doctor_id}</span></td>
+                    <td>${fechaStr} ${horaStr}</td>
+                    <td>${cita.motivo || 'Sin detalle'}</td>
+                    <td><span class="badge ${badgeColor}">${cita.estado}</span></td>
+                    <td>${botonesAccion}</td>
+                </tr>
+            `;
+        }
+
         async function verificarHorariosDoctor() {
             const doctorId = document.getElementById('doctorId').value;
             const contenedor = document.getElementById('contenedorDisponibilidad');
             const lista = document.getElementById('listaHorariosOcupados');
-            
-            if (!doctorId) {
-                contenedor.classList.add('d-none');
-                return;
-            }
+            if (!doctorId) { contenedor.classList.add('d-none'); return; }
 
             try {
                 const response = await fetch(`/clinica/citas/doctor/${doctorId}`);
                 if (response.ok) {
                     const citas = await response.json();
                     lista.innerHTML = "";
+                    // Solo listamos las citas que estén realmente ocupando el espacio (Excluimos CANCELADO)
+                    const citasOcupadas = citas.filter(c => c.estado !== 'CANCELADO');
                     
-                    if (citas.length === 0) {
+                    if (citasOcupadas.length === 0) {
                         contenedor.classList.remove('d-none');
-                        lista.innerHTML = `<span class="badge bg-success p-2 fs-6 w-100 text-start"><i class="bi bi-check-circle-fill"></i> El doctor no tiene citas registradas. ¡Totalmente disponible!</span>`;
+                        lista.innerHTML = `<span class="badge bg-success p-2 fs-6 w-100 text-start"><i class="bi bi-check-circle-fill"></i> El doctor no tiene citas ocupadas. ¡Totalmente disponible!</span>`;
                         return;
                     }
-
                     contenedor.classList.remove('d-none');
-                    citas.forEach(cita => {
+                    citasOcupadas.forEach(cita => {
                         const fechaObj = new Date(cita.fecha_hora);
-                        const fechaFormateada = fechaObj.toLocaleString('es-PE', {
-                            day: '2-digit', month: '2-digit', year: 'numeric',
-                            hour: '2-digit', minute: '2-digit', hour12: true
-                        });
+                        const fechaFormateada = fechaObj.toLocaleString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
                         lista.innerHTML += `<span class="badge bg-danger p-2 fs-6 shadow-sm"><i class="bi bi-clock-history"></i> ${fechaFormateada}</span>`;
                     });
                 }
-            } catch (err) {
-                console.error("Error consultando disponibilidad interna.");
-            }
+            } catch (err) { console.error(err); }
         }
 
-        // --- ENDPOINT POST /clinica/cita ---
         document.getElementById('formCita').addEventListener('submit', async function(e) {
             e.preventDefault();
             const payload = {
-                clinica_id: 1,
-                sede_id: parseInt(document.getElementById('sedeId').value),
-                paciente_id: parseInt(document.getElementById('pacienteId').value),
-                doctor_id: parseInt(document.getElementById('doctorId').value),
-                fecha_hora: document.getElementById('fechaHora').value + ":00", 
-                duracion_minutos: 30,
-                motivo: document.getElementById('motivo').value
+                clinica_id: 1, sede_id: parseInt(document.getElementById('sedeId').value),
+                paciente_id: parseInt(document.getElementById('pacienteId').value), doctor_id: parseInt(document.getElementById('doctorId').value),
+                fecha_hora: document.getElementById('fechaHora').value + ":00", duracion_minutos: 30, motivo: document.getElementById('motivo').value
             };
-
-            const response = await fetch('/clinica/cita', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-
+            const response = await fetch('/clinica/cita', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
             const msj = document.getElementById('mensajeCita');
             msj.className = 'alert mt-3';
-            
             if (response.ok) {
                 const data = await response.json();
                 msj.classList.add('alert-success');
                 msj.innerHTML = `<i class="bi bi-check-circle-fill"></i> ¡Cita orquestada con éxito! ID asignado: ${data.id}.`;
-                this.reset();
-                verificarHorariosDoctor();
+                this.reset(); verificarHorariosDoctor();
             } else {
                 const errorData = await response.json();
                 msj.classList.add('alert-danger');
@@ -373,96 +391,37 @@
             }
         });
 
-        // --- ENDPOINT GET /clinica/citas/{fecha} ---
         async function buscarAgenda() {
             const fecha = document.getElementById('fechaBusqueda').value;
             if(!fecha) return alert("Seleccione una fecha");
-
             const response = await fetch('/clinica/citas/' + fecha);
             const citas = await response.json();
             const tbody = document.getElementById('tablaAgenda');
             tbody.innerHTML = "";
-
-            if(citas.length === 0) {
-                tbody.innerHTML = "<tr><td colspan='6' class='text-center text-muted'>No hay citas registradas para esta fecha.</td></tr>";
-                return;
-            }
-
-            citas.forEach(cita => {
-                const horaStr = new Date(cita.fecha_hora).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                tbody.innerHTML += `
-                    <tr>
-                        <td class="fw-bold text-primary">#${cita.id}</td>
-                        <td><span class="badge bg-secondary">PCT-${cita.paciente_id}</span></td>
-                        <td><span class="badge bg-info text-dark">DOC-${cita.doctor_id}</span></td>
-                        <td>${horaStr}</td>
-                        <td>${cita.motivo || 'Sin detalle'}</td>
-                        <td><span class="badge bg-success">${cita.estado}</span></td>
-                    </tr>
-                `;
-            });
+            if(citas.length === 0) { tbody.innerHTML = "<tr><td colspan='7' class='text-center text-muted'>No hay citas registradas.</td></tr>"; return; }
+            citas.forEach(cita => { tbody.innerHTML += construirFilaTabla(cita); });
         }
 
-        // --- ENDPOINT POST /clinica/procedimiento ---
         document.getElementById('formProcedimiento').addEventListener('submit', async function(e) {
             e.preventDefault();
-            const payload = {
-                cita_id: parseInt(document.getElementById('procCitaId').value),
-                paciente_id: parseInt(document.getElementById('procPacienteId').value),
-                clinica_id: 1,
-                nombre_procedimiento: document.getElementById('procNombre').value,
-                costo: parseFloat(document.getElementById('procCosto').value)
-            };
-
-            const response = await fetch('/clinica/procedimiento', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-
+            const payload = { cita_id: parseInt(document.getElementById('procCitaId').value), paciente_id: parseInt(document.getElementById('procPacienteId').value), clinica_id: 1, nombre_procedimiento: document.getElementById('procNombre').value, costo: parseFloat(document.getElementById('procCosto').value) };
+            const response = await fetch('/clinica/procedimiento', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
             const data = await response.json();
             const msj = document.getElementById('mensajeProc');
             msj.classList.remove('d-none');
-            
-            if (response.ok) {
-                msj.className = 'alert alert-success mt-3';
-                msj.textContent = `Procedimiento registrado exitosamente con ID: ${data.id}. Estado: ${data.estado}.`;
-                this.reset();
-            } else {
-                msj.className = 'alert alert-danger mt-3';
-                msj.textContent = "Error. Verifique que los campos numéricos sean válidos.";
-            }
+            if (response.ok) { msj.className = 'alert alert-success mt-3'; msj.textContent = `Procedimiento registrado exitosamente con ID: ${data.id}.`; this.reset(); }
+            else { msj.className = 'alert alert-danger mt-3'; msj.textContent = "Error en campos numéricos."; }
         });
 
-        // --- ENDPOINT GET /clinica/citas/doctor/{doctor_id} ---
         async function buscarPorDoctor() {
-            const docId = document.getElementById('doctorBusqueda').value; // Ahora lee el select
+            const docId = document.getElementById('doctorBusqueda').value;
             if(!docId) return alert("Seleccione un doctor del listado");
-
             const response = await fetch('/clinica/citas/doctor/' + docId);
             const citas = await response.json();
             const tbody = document.getElementById('tablaAgenda');
             tbody.innerHTML = "";
-
-            if(citas.length === 0) {
-                tbody.innerHTML = "<tr><td colspan='6' class='text-center text-muted'>No hay citas registradas para este doctor.</td></tr>";
-                return;
-            }
-
-            citas.forEach(cita => {
-                const horaStr = new Date(cita.fecha_hora).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                const fechaStr = new Date(cita.fecha_hora).toLocaleDateString();
-                tbody.innerHTML += `
-                    <tr>
-                        <td class="fw-bold text-primary">#${cita.id}</td>
-                        <td><span class="badge bg-secondary">PCT-${cita.paciente_id}</span></td>
-                        <td><span class="badge bg-info text-dark">DOC-${cita.doctor_id}</span></td>
-                        <td>${fechaStr} ${horaStr}</td>
-                        <td>${cita.motivo || 'Sin detalle'}</td>
-                        <td><span class="badge bg-success">${cita.estado}</span></td>
-                    </tr>
-                `;
-            });
+            if(citas.length === 0) { tbody.innerHTML = "<tr><td colspan='7' class='text-center text-muted'>No hay citas para este doctor.</td></tr>"; return; }
+            citas.forEach(cita => { tbody.innerHTML += construirFilaTabla(cita); });
         }
     </script>
 </body>
