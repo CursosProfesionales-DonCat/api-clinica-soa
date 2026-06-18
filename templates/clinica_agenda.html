@@ -258,7 +258,7 @@
             const selectPacienteCita = document.getElementById('pacienteId');
             const selectPacienteProc = document.getElementById('procPacienteId');
             try {
-                const res = await fetch('AQUI_PON_LA_URL_DEL_GRUPO_3_PACIENTES/pacientes'); 
+                const res = await fetch('https://backend-ecosalud.onrender.com/paciente/'); 
                 if (res.ok) {
                     const pacientes = await res.json();
                     let opcionesHTML = '<option value="">Seleccione un paciente...</option>';
