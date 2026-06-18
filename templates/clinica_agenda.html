@@ -127,7 +127,9 @@
                                 <button onclick="buscarAgenda()" class="btn btn-secondary w-100"><i class="bi bi-calendar"></i> Por Fecha</button>
                             </div>
                             <div class="col-md-3">
-                                <input type="number" class="form-control" id="doctorBusqueda" placeholder="ID del Doctor (Ej: 20)">
+                                <select class="form-select" id="doctorBusqueda">
+                                    <option value="">Cargando doctores desde G1...</option>
+                                </select>
                             </div>
                             <div class="col-md-3">
                                 <button onclick="buscarPorDoctor()" class="btn btn-info text-white w-100"><i class="bi bi-person-badge"></i> Por Doctor</button>
@@ -187,6 +189,7 @@
     </div>
 
     <script>
+        // --- CONTROL DE ACCESO ---
         if (localStorage.getItem('sesion_clinica') === 'activa') {
             document.getElementById('login-overlay').setAttribute('style', 'display: none !important;');
         }
@@ -233,19 +236,28 @@
         // ==========================================
         async function cargarDoctores() {
             const selectDoctor = document.getElementById('doctorId');
+            const selectDoctorBusqueda = document.getElementById('doctorBusqueda'); // Nuevo Select en la agenda
+            
             try {
                 const res = await fetch('https://serviciodoctor.onrender.com/doctores?activo=true');
                 if (res.ok) {
                     const doctores = await res.json();
-                    selectDoctor.innerHTML = '<option value="">Seleccione un doctor...</option>';
+                    let opcionesHTML = '<option value="">Seleccione un doctor...</option>';
+                    
                     doctores.forEach(doc => {
-                        selectDoctor.innerHTML += `<option value="${doc.id}">Dr. ${doc.nombres} ${doc.apellidos} - ${doc.especialidad}</option>`;
+                        opcionesHTML += `<option value="${doc.id}">Dr. ${doc.nombres} ${doc.apellidos} - ${doc.especialidad}</option>`;
                     });
+                    
+                    // Llenamos ambos selectores con la misma data del Grupo 1
+                    selectDoctor.innerHTML = opcionesHTML;
+                    selectDoctorBusqueda.innerHTML = '<option value="">Filtre por doctor...</option>' + opcionesHTML.replace('<option value="">Seleccione un doctor...</option>', '');
                 } else {
                     selectDoctor.innerHTML = '<option value="">Error cargando catálogo desde G1</option>';
+                    selectDoctorBusqueda.innerHTML = '<option value="">Error cargando catálogo desde G1</option>';
                 }
             } catch (err) {
                 selectDoctor.innerHTML = '<option value="">No se pudo conectar al Grupo 1</option>';
+                selectDoctorBusqueda.innerHTML = '<option value="">No se pudo conectar al Grupo 1</option>';
             }
         }
 
@@ -257,7 +269,7 @@
             const selectPacienteProc = document.getElementById('procPacienteId');
             
             try {
-                // AQUÍ REEMPLAZAS CON LA URL REAL DEL GRUPO 3 CUANDO TE LA DEN
+                // RECUERDA: AQUÍ PONES LA URL REAL DEL GRUPO 3
                 const res = await fetch('AQUI_PON_LA_URL_DEL_GRUPO_3_PACIENTES/pacientes'); 
                 if (res.ok) {
                     const pacientes = await res.json();
@@ -280,7 +292,7 @@
             }
         }
 
-        // Cargar los selects automáticamente al entrar a la página
+        // Ejecutar funciones al cargar
         document.addEventListener("DOMContentLoaded", () => {
             cargarDoctores();
             cargarPacientes();
@@ -424,8 +436,8 @@
 
         // --- ENDPOINT GET /clinica/citas/doctor/{doctor_id} ---
         async function buscarPorDoctor() {
-            const docId = document.getElementById('doctorBusqueda').value;
-            if(!docId) return alert("Ingrese el ID del doctor");
+            const docId = document.getElementById('doctorBusqueda').value; // Ahora lee el select
+            if(!docId) return alert("Seleccione un doctor del listado");
 
             const response = await fetch('/clinica/citas/doctor/' + docId);
             const citas = await response.json();
