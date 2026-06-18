@@ -47,13 +47,17 @@ def login_admin(datos: LoginRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Credenciales incorrectas")
 
 # ==========================================
-# BÚSQUEDA DE CITAS POR DOCTOR
+# BÚSQUEDA DE CITAS
 # ==========================================
+@router.get("/citas", response_model=list[CitaResponse])
+def ver_todas_las_citas(db: Session = Depends(get_db)):
+    """Devuelve todas las citas para el buscador del módulo de procedimientos"""
+    return db.query(CitaDB).all()
+
 @router.get("/citas/doctor/{doctor_id}", response_model=list[CitaResponse])
 def ver_agenda_doctor(doctor_id: int, db: Session = Depends(get_db)):
     """Permite a los otros grupos consultar todas las citas de un doctor específico"""
-    citas_bd = db.query(CitaDB).filter(CitaDB.doctor_id == doctor_id).all()
-    return citas_bd
+    return db.query(CitaDB).filter(CitaDB.doctor_id == doctor_id).all()
 
 # ==========================================
 # RUTAS DE NEGOCIO (ORQUESTACIÓN Y ESTADOS)
@@ -61,9 +65,9 @@ def ver_agenda_doctor(doctor_id: int, db: Session = Depends(get_db)):
 
 @router.post("/cita", response_model=CitaResponse)
 def agendar_cita(cita: CitaBase, db: Session = Depends(get_db)):
-    """Orquesta la validación con el Grupo 1, Grupo 3 y la disponibilidad de horarios"""
+    """Orquesta la validación con el Grupo 1 y la disponibilidad de horarios"""
     
-    # 1. CONSUMO SOA: Validar que el doctor existe en el Grupo 1
+    # 1. CONSUMO SOA: Validar que el doctor existe y está activo en el Grupo 1
     try:
         respuesta_doctores = requests.get(f"{URL_GRUPO1_DOCTORES}/doctores?activo=true", timeout=5)
         if respuesta_doctores.status_code == 200:
@@ -92,7 +96,7 @@ def agendar_cita(cita: CitaBase, db: Session = Depends(get_db)):
             detail=f"Conflicto de Agenda: El doctor {cita.doctor_id} ya tiene una cita reservada para ese exacto horario."
         )
 
-    # 3. GUARDAR: Si pasa las validaciones, se guarda la cita por defecto como PENDIENTE
+    # 3. GUARDAR: Se guarda la cita con estado inicial AGENDADA
     nueva_cita_db = CitaDB(**cita.dict())
     db.add(nueva_cita_db)
     db.commit()
@@ -102,12 +106,12 @@ def agendar_cita(cita: CitaBase, db: Session = Depends(get_db)):
 
 @router.put("/cita/{cita_id}/estado")
 def actualizar_estado_cita(cita_id: int, nuevo_estado: str, db: Session = Depends(get_db)):
-    """NUEVO ENDPOINT: Cambia el estado de una cita (PENDIENTE, ATENDIDO, CANCELADO)"""
-    estados_validos = ["PENDIENTE", "ATENDIDO", "CANCELADO"]
+    """NUEVO ENDPOINT: Cambia el estado de una cita (AGENDADA, ATENDIDA, CANCELADA)"""
+    estados_validos = ["AGENDADA", "ATENDIDA", "CANCELADA"]
     nuevo_estado = nuevo_estado.upper()
     
     if nuevo_estado not in estados_validos:
-        raise HTTPException(status_code=400, detail="Estado inválido. Use PENDIENTE, ATENDIDO o CANCELADO.")
+        raise HTTPException(status_code=400, detail="Estado inválido. Use AGENDADA, ATENDIDA o CANCELADA.")
         
     cita = db.query(CitaDB).filter(CitaDB.id == cita_id).first()
     if not cita:
