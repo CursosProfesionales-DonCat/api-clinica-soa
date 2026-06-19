@@ -10,6 +10,7 @@ from schemas.clinica import CitaBase, CitaResponse, ProcedimientoBase, Procedimi
 from datetime import date
 from pathlib import Path
 from pydantic import BaseModel
+from typing import Optional
 
 # Definimos la ruta de la carpeta templates de forma absoluta pero dinámica
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -50,8 +51,10 @@ def login_admin(datos: LoginRequest, db: Session = Depends(get_db)):
 # BÚSQUEDA DE CITAS
 # ==========================================
 @router.get("/citas", response_model=list[CitaResponse])
-def ver_todas_las_citas(db: Session = Depends(get_db)):
-    """Devuelve todas las citas para el buscador del módulo de procedimientos"""
+def ver_todas_las_citas(paciente_id: Optional[int] = None, db: Session = Depends(get_db)):
+    """Devuelve todas las citas, con opción de filtrar por paciente_id usando query parameters (?paciente_id=X)"""
+    if paciente_id:
+        return db.query(CitaDB).filter(CitaDB.paciente_id == paciente_id).all()
     return db.query(CitaDB).all()
 
 @router.get("/citas/doctor/{doctor_id}", response_model=list[CitaResponse])
