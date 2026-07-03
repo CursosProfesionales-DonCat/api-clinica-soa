@@ -29,11 +29,13 @@ class ProcedimientoDB(Base):
     costo = Column(Float, nullable=False)
     estado = Column(String(30), default='PROGRAMADO')
 
-# 3. TABLA DE USUARIOS / ADMINISTRADORES (Para el Login y 2FA)
+# 3. TABLA DE USUARIOS / ADMINISTRADORES (Para el Login y 2FA por Correo)
 class UsuarioDB(Base):
     __tablename__ = "usuarios"
 
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String(150), unique=True, index=True, nullable=False)
-    password = Column(String(255), nullable=False)  # Contraseña hash
-    secreto_2fa = Column(String(32), nullable=True)  # Clave base32 generada por pyotp
+    password = Column(String(255), nullable=False)  
+    
+    # CAMBIO AQUÍ: Ahora guardamos un string de 6 dígitos en lugar de una clave base32
+    codigo_2fa = Column(String(6), nullable=True)
