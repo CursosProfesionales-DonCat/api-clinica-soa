@@ -23,21 +23,39 @@
             <div class="card-body text-center">
                 <div class="text-primary mb-3"><i class="bi bi-shield-lock-fill" style="font-size: 3.5rem;"></i></div>
                 <h4 class="fw-bold mb-1 text-dark">ECOSALUD SISTEMAS</h4>
-                <p class="text-muted small mb-4">Módulo de Clínica - Autenticación Base de Datos</p>
+                <p class="text-muted small mb-4">Módulo de Clínica Central</p>
                 
-                <div id="login-error" class="alert alert-danger d-none small py-2 fw-bold"><i class="bi bi-exclamation-triangle-fill"></i> Credenciales inválidas en Supabase</div>
+                <div id="login-error" class="alert alert-danger d-none small py-2 fw-bold"><i class="bi bi-exclamation-triangle-fill"></i> <span id="error-text">Credenciales inválidas</span></div>
                 
-                <form id="formLogin">
-                    <div class="mb-3 text-start">
-                        <label class="form-label small fw-bold text-secondary">Usuario Administrador</label>
-                        <input type="email" id="loginUser" class="form-control" placeholder="admin@ecosalud.com" required>
+                <div id="fase-1-login">
+                    <form id="formLogin">
+                        <div class="mb-3 text-start">
+                            <label class="form-label small fw-bold text-secondary">Usuario Administrador</label>
+                            <input type="email" id="loginUser" class="form-control" placeholder="admin@ecosalud.com" required>
+                        </div>
+                        <div class="mb-4 text-start">
+                            <label class="form-label small fw-bold text-secondary">Contraseña</label>
+                            <input type="password" id="loginPass" class="form-control" placeholder="••••••••" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100 py-2 fw-bold fs-5 shadow-sm">Verificar <i class="bi bi-arrow-right-circle"></i></button>
+                    </form>
+                </div>
+
+                <div id="fase-2-2fa" class="d-none">
+                    <h5 class="fw-bold mb-2">Verificación de 2 Pasos</h5>
+                    <p class="small text-muted mb-3">Ingresa el código de 6 dígitos de tu aplicación autenticadora (Google Authenticator).</p>
+
+                    <div id="caja-secreto-nuevo" class="alert alert-warning d-none text-start small">
+                        <strong>¡Primera vez!</strong> Configura tu app con esta clave secreta:
+                        <h4 id="texto-secreto" class="text-center mt-2 fw-bold text-danger" style="letter-spacing: 3px;"></h4>
                     </div>
-                    <div class="mb-4 text-start">
-                        <label class="form-label small fw-bold text-secondary">Contraseña</label>
-                        <input type="password" id="loginPass" class="form-control" placeholder="••••••••" required>
-                    </div>
-                    <button type="submit" class="btn btn-primary w-100 py-2 fw-bold fs-5 shadow-sm">Verificar en BD <i class="bi bi-database-check"></i></button>
-                </form>
+
+                    <form id="form2FA">
+                        <input type="text" id="codigo2FA" class="form-control text-center fs-3 fw-bold mb-3" placeholder="000000" maxlength="6" required autocomplete="off">
+                        <button type="submit" class="btn btn-success w-100 py-2 fw-bold fs-5 shadow-sm">Ingresar al Sistema <i class="bi bi-shield-check"></i></button>
+                        <button type="button" class="btn btn-link text-secondary mt-2 small" onclick="volverAlLogin()">Volver atrás</button>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
@@ -57,7 +75,7 @@
         <div class="topbar d-flex justify-content-between align-items-center">
             <h5 class="m-0 text-secondary fw-bold">API Gateway - Orquestador (Grupo 2)</h5>
             <div>
-                <span class="badge bg-success shadow-sm px-3 py-2"><i class="bi bi-check-circle me-1"></i> Nodos Conectados</span>
+                <span class="badge bg-success shadow-sm px-3 py-2"><i class="bi bi-shield-lock me-1"></i> Sesión Segura (JWT)</span>
             </div>
         </div>
 
@@ -183,10 +201,33 @@
     </div>
 
     <script>
-        if (localStorage.getItem('sesion_clinica') === 'activa') {
+        // Utilidad global para recordar el email entre el paso 1 y 2 de la autenticación
+        let emailTemporal = "";
+
+        // Revisar si ya tenemos un Token JWT guardado
+        if (localStorage.getItem('token_clinica')) {
             document.getElementById('login-overlay').setAttribute('style', 'display: none !important;');
         }
 
+        // Utilidad para inyectar el Token en TODAS las peticiones hacia nuestro backend
+        function getAuthHeaders() {
+            return {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token_clinica')}`
+            };
+        }
+
+        // Manejador central de errores de sesión (Para cuando expira el token de 2 horas)
+        function manejarErrorSesion(response) {
+            if (response.status === 401 || response.status === 403) {
+                alert("Tu sesión ha expirado o es inválida. Por favor, inicia sesión de nuevo.");
+                cerrarSesion();
+                return true;
+            }
+            return false;
+        }
+
+        // --- AUTENTICACIÓN: FASE 1 (Login) ---
         document.getElementById('formLogin').addEventListener('submit', async function(e) {
             e.preventDefault();
             const email = document.getElementById('loginUser').value;
@@ -199,24 +240,77 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email, password })
                 });
+                
+                const data = await response.json();
 
-                if (response.ok) {
-                    localStorage.setItem('sesion_clinica', 'activa');
-                    document.getElementById('login-overlay').setAttribute('style', 'display: none !important;');
+                if (response.ok && data.requiere_2fa) {
+                    // Contraseña correcta, pasamos a pedir el código
+                    emailTemporal = email;
+                    document.getElementById('fase-1-login').classList.add('d-none');
+                    document.getElementById('fase-2-2fa').classList.remove('d-none');
+                    errorDiv.classList.add('d-none');
+
+                    // Si es la primera vez, mostramos la clave para configurar la app
+                    if (data.secreto_para_app) {
+                        document.getElementById('caja-secreto-nuevo').classList.remove('d-none');
+                        document.getElementById('texto-secreto').innerText = data.secreto_para_app;
+                    }
                 } else {
+                    document.getElementById('error-text').innerText = data.detail || "Credenciales incorrectas";
                     errorDiv.classList.remove('d-none');
                     setTimeout(() => errorDiv.classList.add('d-none'), 3000);
                 }
             } catch (err) {
-                alert("Error de conexión con el servidor Gateway.");
+                alert("Error de conexión con el servidor.");
             }
         });
 
+        // --- AUTENTICACIÓN: FASE 2 (Código de 6 dígitos) ---
+        document.getElementById('form2FA').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const codigo_2fa = document.getElementById('codigo2FA').value;
+            const errorDiv = document.getElementById('login-error');
+
+            try {
+                const response = await fetch('/clinica/verificar-2fa', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: emailTemporal, codigo_2fa: codigo_2fa })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.access_token) {
+                    // ¡ÉXITO! Guardamos el Token JWT y ocultamos la pantalla
+                    localStorage.setItem('token_clinica', data.access_token);
+                    document.getElementById('login-overlay').setAttribute('style', 'display: none !important;');
+                    cargarDoctores(); // Cargamos datos base ahora que estamos autenticados
+                } else {
+                    document.getElementById('error-text').innerText = data.detail || "Código incorrecto";
+                    errorDiv.classList.remove('d-none');
+                    setTimeout(() => errorDiv.classList.add('d-none'), 3000);
+                }
+            } catch (err) {
+                alert("Error al verificar el código.");
+            }
+        });
+
+        // Función para el botón "Volver atrás" en la pantalla de 2FA
+        function volverAlLogin() {
+            document.getElementById('fase-2-2fa').classList.add('d-none');
+            document.getElementById('fase-1-login').classList.remove('d-none');
+            document.getElementById('caja-secreto-nuevo').classList.add('d-none');
+            document.getElementById('codigo2FA').value = '';
+            document.getElementById('loginPass').value = '';
+        }
+
+        // Destruir el Token para salir
         function cerrarSesion() {
-            localStorage.removeItem('sesion_clinica');
+            localStorage.removeItem('token_clinica');
             location.reload();
         }
 
+        // Control de Vistas (Navegación Lateral)
         function cambiarVista(idVista, elemento) {
             document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.menu-link').forEach(el => el.classList.remove('active', 'bg-primary'));
@@ -224,9 +318,13 @@
             elemento.classList.add('active', 'bg-primary');
         }
 
+        // Carga Inicial de Doctores (Hacia el Grupo 1)
         async function cargarDoctores() {
+            if (!localStorage.getItem('token_clinica')) return; // No cargar si no hay sesión
+            
             const selectDoctor = document.getElementById('doctorId');
             try {
+                // NOTA: Esta petición va a otro servidor externo, no necesita nuestro JWT local
                 const res = await fetch('https://serviciodoctor.onrender.com/doctores?activo=true');
                 if (res.ok) {
                     const doctores = await res.json();
@@ -241,12 +339,9 @@
                 selectDoctor.innerHTML = '<option value="">No se pudo conectar al Grupo 1</option>';
             }
         }
-
         document.addEventListener("DOMContentLoaded", cargarDoctores);
 
-        // ==========================================
-        // NUEVO: VERIFICACIÓN DINÁMICA DE HORARIOS OCUPADOS
-        // ==========================================
+        // --- ENDPOINT: DISPONIBILIDAD DE DOCTOR (Requiere Token) ---
         async function verificarHorariosDoctor() {
             const doctorId = document.getElementById('doctorId').value;
             const contenedor = document.getElementById('contenedorDisponibilidad');
@@ -258,8 +353,10 @@
             }
 
             try {
-                // Consultamos a nuestro propio endpoint las citas de este doctor específico
-                const response = await fetch(`/clinica/citas/doctor/${doctorId}`);
+                // INYECTAMOS LOS HEADERS JWT AQUÍ
+                const response = await fetch(`/clinica/citas/doctor/${doctorId}`, { headers: getAuthHeaders() });
+                if (manejarErrorSesion(response)) return;
+
                 if (response.ok) {
                     const citas = await response.json();
                     lista.innerHTML = "";
@@ -272,7 +369,6 @@
 
                     contenedor.classList.remove('d-none');
                     citas.forEach(cita => {
-                        // Formateamos la fecha para que sea legible en Perú (ejemplo: 16/06/2026, 10:00 AM)
                         const fechaObj = new Date(cita.fecha_hora);
                         const fechaFormateada = fechaObj.toLocaleString('es-PE', {
                             day: '2-digit', month: '2-digit', year: 'numeric',
@@ -286,7 +382,7 @@
             }
         }
 
-        // --- ENDPOINT POST /clinica/cita ---
+        // --- ENDPOINT POST: GUARDAR CITA (Requiere Token) ---
         document.getElementById('formCita').addEventListener('submit', async function(e) {
             e.preventDefault();
             const payload = {
@@ -299,11 +395,13 @@
                 motivo: document.getElementById('motivo').value
             };
 
+            // INYECTAMOS LOS HEADERS JWT EN EL POST
             const response = await fetch('/clinica/cita', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getAuthHeaders(),
                 body: JSON.stringify(payload)
             });
+            if (manejarErrorSesion(response)) return;
 
             const msj = document.getElementById('mensajeCita');
             msj.className = 'alert mt-3';
@@ -313,7 +411,6 @@
                 msj.classList.add('alert-success');
                 msj.innerHTML = `<i class="bi bi-check-circle-fill"></i> ¡Cita orquestada con éxito! ID asignado: ${data.id}.`;
                 this.reset();
-                // Refrescamos el panel de ocupación
                 verificarHorariosDoctor();
             } else {
                 const errorData = await response.json();
@@ -322,12 +419,14 @@
             }
         });
 
-        // --- ENDPOINT GET /clinica/citas/{fecha} ---
+        // --- ENDPOINT GET: VER AGENDA (Requiere Token) ---
         async function buscarAgenda() {
             const fecha = document.getElementById('fechaBusqueda').value;
             if(!fecha) return alert("Seleccione una fecha");
 
-            const response = await fetch('/clinica/citas/' + fecha);
+            const response = await fetch('/clinica/citas/' + fecha, { headers: getAuthHeaders() });
+            if (manejarErrorSesion(response)) return;
+            
             const citas = await response.json();
             const tbody = document.getElementById('tablaAgenda');
             tbody.innerHTML = "";
@@ -352,7 +451,7 @@
             });
         }
 
-        // --- ENDPOINT POST /clinica/procedimiento ---
+        // --- ENDPOINT POST: PROCEDIMIENTO (Requiere Token) ---
         document.getElementById('formProcedimiento').addEventListener('submit', async function(e) {
             e.preventDefault();
             const payload = {
@@ -365,9 +464,10 @@
 
             const response = await fetch('/clinica/procedimiento', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getAuthHeaders(),
                 body: JSON.stringify(payload)
             });
+            if (manejarErrorSesion(response)) return;
 
             const data = await response.json();
             const msj = document.getElementById('mensajeProc');
@@ -383,12 +483,14 @@
             }
         });
 
-        // --- ENDPOINT GET /clinica/citas/doctor/{doctor_id} ---
+        // --- ENDPOINT GET: CITAS POR DOCTOR (Requiere Token) ---
         async function buscarPorDoctor() {
             const docId = document.getElementById('doctorBusqueda').value;
             if(!docId) return alert("Ingrese el ID del doctor");
 
-            const response = await fetch('/clinica/citas/doctor/' + docId);
+            const response = await fetch('/clinica/citas/doctor/' + docId, { headers: getAuthHeaders() });
+            if (manejarErrorSesion(response)) return;
+            
             const citas = await response.json();
             const tbody = document.getElementById('tablaAgenda');
             tbody.innerHTML = "";
