@@ -1,13 +1,16 @@
 import requests
+import pyotp
+import jwt
+from datetime import date, datetime, timedelta
 from fastapi import APIRouter, Request, Depends, HTTPException
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import cast, Date, text
 from database import get_db
-from models.clinica import CitaDB, ProcedimientoDB
+# Asegúrate de importar UsuarioDB aquí
+from models.clinica import CitaDB, ProcedimientoDB, UsuarioDB 
 from schemas.clinica import CitaBase, CitaResponse, ProcedimientoBase, ProcedimientoResponse
-from datetime import date
 from pathlib import Path
 from pydantic import BaseModel
 
@@ -18,32 +21,85 @@ templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 router = APIRouter(prefix="/clinica", tags=["Módulo Clínica (Grupo 2)"])
 
 # ==========================================
-# URLS DE MICROSERVICIOS EXTERNOS (SOA)
+# CONFIGURACIÓN JWT Y MICROSERVICIOS
 # ==========================================
 URL_GRUPO1_DOCTORES = "https://serviciodoctor.onrender.com"
+SECRET_KEY = "tu_clave_secreta_super_segura" # Cambiar en producción
+ALGORITHM = "HS256"
 
-# Esquema para recibir los datos del Login
+# ==========================================
+# ESQUEMAS DE AUTENTICACIÓN
+# ==========================================
 class LoginRequest(BaseModel):
     email: str
     password: str
+
+class Verify2FARequest(BaseModel):
+    email: str
+    codigo_2fa: str
 
 @router.get("/interfaz", response_class=HTMLResponse)
 async def ver_interfaz_clinica(request: Request):
     return templates.TemplateResponse(request=request, name="clinica_agenda.html")
 
 # ==========================================
-# AUTENTICACIÓN (EXCLUSIVO PANEL G2)
+# AUTENTICACIÓN Y 2FA (EXCLUSIVO PANEL G2)
 # ==========================================
 @router.post("/login")
 def login_admin(datos: LoginRequest, db: Session = Depends(get_db)):
-    """Verifica las credenciales del administrador directamente en Supabase"""
-    query = text("SELECT * FROM usuarios WHERE email = :email AND password = :password")
-    resultado = db.execute(query, {"email": datos.email, "password": datos.password}).fetchone()
+    """Fase 1: Verifica credenciales y solicita/genera el 2FA"""
+    # Usamos el ORM en lugar de raw SQL para poder actualizar el secreto fácilmente
+    usuario = db.query(UsuarioDB).filter(UsuarioDB.email == datos.email).first()
     
-    if resultado:
-        return {"status": "success", "message": "Acceso autorizado"}
-    else:
+    if not usuario or usuario.password != datos.password:
         raise HTTPException(status_code=401, detail="Credenciales incorrectas")
+
+    # Lógica del 2FA
+    if not usuario.secreto_2fa:
+        nuevo_secreto = pyotp.random_base32()
+        usuario.secreto_2fa = nuevo_secreto
+        db.commit()
+        
+        return {
+            "status": "success", 
+            "message": "Primera vez iniciando sesión. Configura tu app de autenticación.",
+            "requiere_2fa": True,
+            "secreto_para_app": nuevo_secreto
+        }
+    
+    return {
+        "status": "success", 
+        "message": "Credenciales correctas. Por favor, ingresa tu código 2FA de 6 dígitos.",
+        "requiere_2fa": True
+    }
+
+@router.post("/verificar-2fa")
+def verificar_codigo_2fa(datos: Verify2FARequest, db: Session = Depends(get_db)):
+    """Fase 2: Valida el código temporal y devuelve el Token JWT"""
+    usuario = db.query(UsuarioDB).filter(UsuarioDB.email == datos.email).first()
+    
+    if not usuario or not usuario.secreto_2fa:
+        raise HTTPException(status_code=400, detail="Usuario no válido o 2FA no configurado")
+
+    totp = pyotp.TOTP(usuario.secreto_2fa)
+    if not totp.verify(datos.codigo_2fa):
+        raise HTTPException(status_code=401, detail="Código 2FA incorrecto o expirado")
+
+    expiracion = datetime.utcnow() + timedelta(hours=2)
+    payload = {
+        "sub": usuario.email,
+        "2fa_aprobado": True,
+        "exp": expiracion
+    }
+    
+    token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+    
+    return {
+        "status": "success",
+        "message": "Acceso autorizado",
+        "access_token": token,
+        "token_type": "bearer"
+    }
 
 # ==========================================
 # BÚSQUEDA DE CITAS POR DOCTOR
@@ -57,7 +113,6 @@ def ver_agenda_doctor(doctor_id: int, db: Session = Depends(get_db)):
 # ==========================================
 # RUTAS DE NEGOCIO (ORQUESTACIÓN)
 # ==========================================
-
 @router.post("/cita", response_model=CitaResponse)
 def agendar_cita(cita: CitaBase, db: Session = Depends(get_db)):
     """Orquesta la validación con el Grupo 1 y la disponibilidad de horarios"""
