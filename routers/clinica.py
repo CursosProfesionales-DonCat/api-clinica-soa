@@ -1,6 +1,8 @@
 import requests
-import pyotp
 import jwt
+import smtplib
+import random
+from email.mime.text import MIMEText
 from datetime import date, datetime, timedelta
 from fastapi import APIRouter, Request, Depends, HTTPException
 from fastapi.templating import Jinja2Templates
@@ -8,7 +10,8 @@ from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import cast, Date, text
 from database import get_db
-# Asegúrate de importar UsuarioDB aquí
+
+# Importamos las tablas y esquemas de la base de datos
 from models.clinica import CitaDB, ProcedimientoDB, UsuarioDB 
 from schemas.clinica import CitaBase, CitaResponse, ProcedimientoBase, ProcedimientoResponse
 from pathlib import Path
@@ -38,52 +41,73 @@ class Verify2FARequest(BaseModel):
     email: str
     codigo_2fa: str
 
+# ==========================================
+# FUNCIÓN PARA ENVIAR EL CORREO (EL "CARTERO")
+# ==========================================
+def enviar_codigo_por_correo(destinatario: str, codigo: str):
+    remitente = "zaidxerneas@gmail.com" 
+    password = "Prueba123" # Nota: Si Google bloquea el envío (Error 500), cambia esto por una Contraseña de Aplicación.
+
+    msg = MIMEText(f"Hola, tu código de verificación para entrar a ECOSALUD es: {codigo}")
+    msg['Subject'] = "Código de Seguridad 2FA - ECOSALUD"
+    msg['From'] = remitente
+    msg['To'] = destinatario
+
+    try:
+        # Nos conectamos al servidor de Google para mandar el correo
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+            server.login(remitente, password)
+            server.send_message(msg)
+    except Exception as e:
+        print(f"Error enviando correo: {e}")
+        raise HTTPException(status_code=500, detail="Error interno al enviar el correo.")
+
 @router.get("/interfaz", response_class=HTMLResponse)
 async def ver_interfaz_clinica(request: Request):
     return templates.TemplateResponse(request=request, name="clinica_agenda.html")
 
 # ==========================================
-# AUTENTICACIÓN Y 2FA (EXCLUSIVO PANEL G2)
+# AUTENTICACIÓN Y 2FA POR CORREO (EXCLUSIVO PANEL G2)
 # ==========================================
 @router.post("/login")
 def login_admin(datos: LoginRequest, db: Session = Depends(get_db)):
-    """Fase 1: Verifica credenciales y solicita/genera el 2FA"""
-    # Usamos el ORM en lugar de raw SQL para poder actualizar el secreto fácilmente
+    """Fase 1: Verifica credenciales y envía el código por correo"""
     usuario = db.query(UsuarioDB).filter(UsuarioDB.email == datos.email).first()
     
     if not usuario or usuario.password != datos.password:
         raise HTTPException(status_code=401, detail="Credenciales incorrectas")
 
-    # Lógica del 2FA
-    if not usuario.secreto_2fa:
-        nuevo_secreto = pyotp.random_base32()
-        usuario.secreto_2fa = nuevo_secreto
-        db.commit()
-        
-        return {
-            "status": "success", 
-            "message": "Primera vez iniciando sesión. Configura tu app de autenticación.",
-            "requiere_2fa": True,
-            "secreto_para_app": nuevo_secreto
-        }
+    # 1. Generamos un código aleatorio de 6 dígitos
+    codigo_generado = str(random.randint(100000, 999999))
+    
+    # 2. Guardamos el código en la base de datos (columna codigo_2fa)
+    usuario.codigo_2fa = codigo_generado
+    db.commit()
+    
+    # 3. Disparamos la función que envía el correo
+    enviar_codigo_por_correo(usuario.email, codigo_generado)
     
     return {
         "status": "success", 
-        "message": "Credenciales correctas. Por favor, ingresa tu código 2FA de 6 dígitos.",
+        "message": "Código enviado. Revisa tu bandeja de entrada.",
         "requiere_2fa": True
     }
 
 @router.post("/verificar-2fa")
 def verificar_codigo_2fa(datos: Verify2FARequest, db: Session = Depends(get_db)):
-    """Fase 2: Valida el código temporal y devuelve el Token JWT"""
+    """Fase 2: Valida el código del correo y devuelve el Token JWT"""
     usuario = db.query(UsuarioDB).filter(UsuarioDB.email == datos.email).first()
     
-    if not usuario or not usuario.secreto_2fa:
-        raise HTTPException(status_code=400, detail="Usuario no válido o 2FA no configurado")
+    if not usuario or not usuario.codigo_2fa:
+        raise HTTPException(status_code=400, detail="Usuario no válido o código expirado")
 
-    totp = pyotp.TOTP(usuario.secreto_2fa)
-    if not totp.verify(datos.codigo_2fa):
-        raise HTTPException(status_code=401, detail="Código 2FA incorrecto o expirado")
+    # Verificamos si el código ingresado coincide con el de la BD
+    if usuario.codigo_2fa != datos.codigo_2fa:
+        raise HTTPException(status_code=401, detail="El código 2FA es incorrecto")
+
+    # Limpiamos el código para que no se pueda reutilizar
+    usuario.codigo_2fa = None
+    db.commit()
 
     expiracion = datetime.utcnow() + timedelta(hours=2)
     payload = {
