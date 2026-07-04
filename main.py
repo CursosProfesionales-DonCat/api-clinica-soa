@@ -5,7 +5,7 @@ import webbrowser
 import uvicorn
 from fastapi import FastAPI
 from fastapi.responses import RedirectResponse
-from fastapi.middleware.cors import CORSMiddleware # <-- 1. NUEVA IMPORTACIÓN
+from fastapi.middleware.cors import CORSMiddleware
 from routers import clinica 
 from database import engine, Base
 
@@ -16,16 +16,15 @@ app = FastAPI(
 )
 
 # ========================================================
-# 2. CONFIGURACIÓN DE CORS (PERMITE CONECTARSE A OTROS)
+# CONFIGURACIÓN DE CORS (PERMITE CONECTARSE A OTROS)
 # ========================================================
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # El asterisco permite que cualquier IP o web se conecte
+    allow_origins=["*"],  
     allow_credentials=True,
-    allow_methods=["*"],  # Permite métodos GET, POST, PUT, DELETE
-    allow_headers=["*"],  # Permite cualquier cabecera
+    allow_methods=["*"],  
+    allow_headers=["*"],  
 )
-# ========================================================
 
 # Crea las tablas en PostgreSQL automáticamente al arrancar
 Base.metadata.create_all(bind=engine)
@@ -37,6 +36,18 @@ app.include_router(clinica.router)
 def ruta_principal():
     """Si alguien entra a la URL base, lo mandamos a la interfaz"""
     return RedirectResponse(url="/clinica/interfaz")
+
+# ========================================================
+# DETECCIÓN CONSTANTE (HEALTH CHECK)
+# ========================================================
+@app.get("/actuator/health", tags=["Monitorización"])
+def health_check():
+    """Ruta para que un orquestador verifique la salud en tiempo real"""
+    return {
+        "status": "UP", 
+        "timestamp": time.time(),
+        "service": "ECOSALUD-Gateway"
+    }
 
 def abrir_navegador():
     time.sleep(2) 
