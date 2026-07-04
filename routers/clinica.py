@@ -12,6 +12,10 @@ from pathlib import Path
 from pydantic import BaseModel
 from typing import Optional
 
+# Librerías de Resiliencia y Tolerancia a Fallos
+from tenacity import retry, wait_exponential, stop_after_attempt, retry_if_exception_type
+from circuitbreaker import circuit, CircuitBreakerError
+
 # Definimos la ruta de la carpeta templates de forma absoluta pero dinámica
 BASE_DIR = Path(__file__).resolve().parent.parent
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
@@ -24,7 +28,6 @@ router = APIRouter(prefix="/clinica", tags=["Módulo Clínica (Grupo 2)"])
 URL_GRUPO1_DOCTORES = "https://serviciodoctor.onrender.com"
 URL_GRUPO3_PACIENTES = "https://backend-ecosalud.onrender.com" 
 
-# Esquema para recibir los datos del Login
 class LoginRequest(BaseModel):
     email: str
     password: str
@@ -33,12 +36,8 @@ class LoginRequest(BaseModel):
 async def ver_interfaz_clinica(request: Request):
     return templates.TemplateResponse(request=request, name="clinica_agenda.html")
 
-# ==========================================
-# AUTENTICACIÓN (EXCLUSIVO PANEL G2)
-# ==========================================
 @router.post("/login")
 def login_admin(datos: LoginRequest, db: Session = Depends(get_db)):
-    """Verifica las credenciales del administrador directamente en Supabase"""
     query = text("SELECT * FROM usuarios WHERE email = :email AND password = :password")
     resultado = db.execute(query, {"email": datos.email, "password": datos.password}).fetchone()
     
@@ -47,47 +46,68 @@ def login_admin(datos: LoginRequest, db: Session = Depends(get_db)):
     else:
         raise HTTPException(status_code=401, detail="Credenciales incorrectas")
 
-# ==========================================
-# BÚSQUEDA DE CITAS
-# ==========================================
 @router.get("/citas", response_model=list[CitaResponse])
 def ver_todas_las_citas(paciente_id: Optional[int] = None, db: Session = Depends(get_db)):
-    """Devuelve todas las citas, con opción de filtrar por paciente_id usando query parameters (?paciente_id=X)"""
     if paciente_id:
         return db.query(CitaDB).filter(CitaDB.paciente_id == paciente_id).all()
     return db.query(CitaDB).all()
 
 @router.get("/citas/doctor/{doctor_id}", response_model=list[CitaResponse])
 def ver_agenda_doctor(doctor_id: int, db: Session = Depends(get_db)):
-    """Permite a los otros grupos consultar todas las citas de un doctor específico"""
     return db.query(CitaDB).filter(CitaDB.doctor_id == doctor_id).all()
+
+# ==========================================
+# LÓGICA DE RESILIENCIA (CIRCUIT BREAKER & RETRIES)
+# ==========================================
+def fallback_doctores():
+    """Atenuación: Se ejecuta si el circuito está abierto (servicio caído)"""
+    raise HTTPException(
+        status_code=503,
+        detail="ATENUACIÓN ACTIVA: El servicio de Doctores está caído. Operación degradada temporalmente para proteger el sistema."
+    )
+
+# Reintenta 3 veces con tiempos de espera de 1s, 2s y 4s
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=1, max=10),
+    retry=retry_if_exception_type(requests.exceptions.RequestException)
+)
+# El disyuntor se abre tras 3 fallos y espera 15 segundos antes de intentar reconectar (Semi-Abierto)
+@circuit(failure_threshold=3, recovery_timeout=15, fallback_function=fallback_doctores)
+def consultar_doctores_seguro():
+    """Encapsula la petición HTTP con control de fallos estricto"""
+    respuesta = requests.get(f"{URL_GRUPO1_DOCTORES}/doctores?activo=true", timeout=4)
+    respuesta.raise_for_status() # Dispara excepción si no responde 200 OK
+    return respuesta.json()
 
 # ==========================================
 # RUTAS DE NEGOCIO (ORQUESTACIÓN Y ESTADOS)
 # ==========================================
-
 @router.post("/cita", response_model=CitaResponse)
 def agendar_cita(cita: CitaBase, db: Session = Depends(get_db)):
     """Orquesta la validación con el Grupo 1 y la disponibilidad de horarios"""
     
-    # 1. CONSUMO SOA: Validar que el doctor existe y está activo en el Grupo 1
+    # 1. CONSUMO SOA BLINDADO (TOLERANCIA A FALLOS APLICADA)
     try:
-        respuesta_doctores = requests.get(f"{URL_GRUPO1_DOCTORES}/doctores?activo=true", timeout=5)
-        if respuesta_doctores.status_code == 200:
-            doctores_activos = respuesta_doctores.json()
-            doctor_existe = any(doc["id"] == cita.doctor_id for doc in doctores_activos)
+        doctores_activos = consultar_doctores_seguro()
+        doctor_existe = any(doc["id"] == cita.doctor_id for doc in doctores_activos)
+        
+        if not doctor_existe:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Integración G1: El doctor con ID {cita.doctor_id} no existe o no está activo."
+            )
             
-            if not doctor_existe:
-                raise HTTPException(
-                    status_code=400, 
-                    detail=f"Integración G1: El doctor con ID {cita.doctor_id} no existe o no está activo."
-                )
-        else:
-            raise HTTPException(status_code=503, detail="El microservicio del Grupo 1 no responde correctamente.")
-    except requests.exceptions.RequestException:
-        raise HTTPException(status_code=503, detail="Error de conexión con el servidor del Grupo 1.")
+    except HTTPException as e:
+        # Re-lanzar las excepciones HTTP generadas por el fallback o lógica interna
+        raise e
+    except CircuitBreakerError:
+        # Prevención en caso de que la función fallback no logre capturarlo
+        raise HTTPException(status_code=503, detail="Circuito Abierto: Fallo general en dependencia externa.")
+    except Exception:
+        raise HTTPException(status_code=500, detail="Error catastrófico en la red.")
 
-    # 2. VALIDACIÓN DE DISPONIBILIDAD: Verificar cruce de horarios en nuestra BD
+    # 2. VALIDACIÓN DE DISPONIBILIDAD
     cita_existente = db.query(CitaDB).filter(
         CitaDB.doctor_id == cita.doctor_id,
         CitaDB.fecha_hora == cita.fecha_hora
@@ -99,7 +119,7 @@ def agendar_cita(cita: CitaBase, db: Session = Depends(get_db)):
             detail=f"Conflicto de Agenda: El doctor {cita.doctor_id} ya tiene una cita reservada para ese exacto horario."
         )
 
-    # 3. GUARDAR: Se guarda la cita con estado inicial AGENDADA
+    # 3. GUARDAR
     nueva_cita_db = CitaDB(**cita.dict())
     db.add(nueva_cita_db)
     db.commit()
@@ -109,7 +129,6 @@ def agendar_cita(cita: CitaBase, db: Session = Depends(get_db)):
 
 @router.put("/cita/{cita_id}/estado")
 def actualizar_estado_cita(cita_id: int, nuevo_estado: str, db: Session = Depends(get_db)):
-    """NUEVO ENDPOINT: Cambia el estado de una cita (AGENDADA, ATENDIDA, CANCELADA)"""
     estados_validos = ["AGENDADA", "ATENDIDA", "CANCELADA"]
     nuevo_estado = nuevo_estado.upper()
     
@@ -124,7 +143,6 @@ def actualizar_estado_cita(cita_id: int, nuevo_estado: str, db: Session = Depend
     db.commit()
     return {"status": "success", "message": f"Cita #{cita_id} cambiada a estado {nuevo_estado}"}
 
-
 @router.get("/citas/{fecha}", response_model=list[CitaResponse])
 def ver_agenda_diaria(fecha: date, db: Session = Depends(get_db)):
     citas_bd = db.query(CitaDB).filter(cast(CitaDB.fecha_hora, Date) == fecha).all()
@@ -138,12 +156,8 @@ def registrar_procedimiento(proc: ProcedimientoBase, db: Session = Depends(get_d
     db.refresh(nuevo_proc_db)
     return nuevo_proc_db
 
-# ==========================================
-# REPORTE DE PACIENTES ATENDIDOS
-# ==========================================
 @router.get("/pacientes-atendidos")
 def ver_pacientes_atendidos(db: Session = Depends(get_db)):
-    """Devuelve la lista de IDs de pacientes únicos históricos para reportes de Dirección"""
     pacientes = db.query(CitaDB.paciente_id).distinct().all()
     lista_ids = [p[0] for p in pacientes]
     return {
