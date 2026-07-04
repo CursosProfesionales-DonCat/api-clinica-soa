@@ -4,3 +4,5 @@ sqlalchemy
 psycopg2-binary
 jinja2
 requests
+tenacity
+circuitbreaker
