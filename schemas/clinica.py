@@ -19,7 +19,6 @@ class CitaResponse(CitaBase):
 
     # Configuración esencial para que SQLAlchemy se comunique con FastAPI
     class Config:
-        orm_mode = True
         from_attributes = True
 
 # ---- Esquemas para Procedimientos ----
