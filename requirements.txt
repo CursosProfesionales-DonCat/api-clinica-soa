@@ -6,3 +6,6 @@ jinja2
 requests
 pyotp
 PyJWT
+bcrypt
+python-dotenv
+python-multipart
