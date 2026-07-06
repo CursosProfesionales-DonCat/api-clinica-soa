@@ -1,3 +1,4 @@
+import os
 import requests
 import jwt
 import smtplib
@@ -71,9 +72,11 @@ def generar_totp(secret_key: str, time_step: int = 30, digits: int = 6):
 # FUNCIÓN PARA ENVIAR EL CORREO (CON BREVO)
 # ==========================================
 def enviar_codigo_por_correo(destinatario: str, codigo: str):
-    remitente = "zaidxerneas@gmail.com" # <-- ESTO ESTÁ BIEN
-    usuario_brevo = "b106bc001@smtp-brevo.com" # <-- ESTO ESTÁ BIEN
-    password_smtp = "xsmtpsib-8946029e86f4c10a8982116524f58cc5529d21c15a049d0137c10f232721b481-GfUmma2LImFJtJOm" # <-- BIEN
+    remitente = "zaidxerneas@gmail.com" 
+    usuario_brevo = "b106bc001@smtp-brevo.com" 
+    
+    # LEYENDO LA CLAVE DESDE RENDER PARA MAYOR SEGURIDAD
+    password_smtp = os.environ.get("BREVO_SMTP_KEY") 
 
     msg = MIMEText(f"Hola, tu código de verificación para entrar a ECOSALUD es: {codigo}\n\nEste código expira en 30 segundos.")
     msg['Subject'] = "Código de Seguridad 2FA - ECOSALUD"
