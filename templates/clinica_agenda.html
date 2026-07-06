@@ -43,12 +43,15 @@
 
                 <div id="fase-2-2fa" class="d-none">
                     <h5 class="fw-bold mb-2">Verificación de 2 Pasos</h5>
-                    <div class="alert alert-info text-center small mb-3">
-                        Hemos enviado un código de 6 dígitos a tu correo. Por seguridad, expira en 30 segundos.
+                    <p class="small text-muted mb-3">Ingresa el código de 6 dígitos de tu aplicación autenticadora (Google Authenticator).</p>
+
+                    <div id="caja-secreto-nuevo" class="alert alert-warning d-none text-start small">
+                        <strong>¡Primera vez!</strong> Configura tu app con esta clave secreta:
+                        <h4 id="texto-secreto" class="text-center mt-2 fw-bold text-danger" style="letter-spacing: 3px;"></h4>
                     </div>
 
                     <form id="form2FA">
-                        <input type="text" id="codigo2FA" class="form-control text-center fs-3 fw-bold mb-3" placeholder="000000" maxlength="6" required autocomplete="off" style="letter-spacing: 5px;">
+                        <input type="text" id="codigo2FA" class="form-control text-center fs-3 fw-bold mb-3" placeholder="000000" maxlength="6" required autocomplete="off">
                         <button type="submit" class="btn btn-success w-100 py-2 fw-bold fs-5 shadow-sm">Ingresar al Sistema <i class="bi bi-shield-check"></i></button>
                         <button type="button" class="btn btn-link text-secondary mt-2 small" onclick="volverAlLogin()">Volver atrás</button>
                     </form>
@@ -241,20 +244,24 @@
                 const data = await response.json();
 
                 if (response.ok && data.requiere_2fa) {
-                    // Contraseña correcta, ocultamos pantalla 1 y mostramos la 2
+                    // Contraseña correcta, pasamos a pedir el código
                     emailTemporal = email;
                     document.getElementById('fase-1-login').classList.add('d-none');
                     document.getElementById('fase-2-2fa').classList.remove('d-none');
                     errorDiv.classList.add('d-none');
+
+                    // Si es la primera vez, mostramos la clave para configurar la app
+                    if (data.secreto_para_app) {
+                        document.getElementById('caja-secreto-nuevo').classList.remove('d-none');
+                        document.getElementById('texto-secreto').innerText = data.secreto_para_app;
+                    }
                 } else {
                     document.getElementById('error-text').innerText = data.detail || "Credenciales incorrectas";
                     errorDiv.classList.remove('d-none');
                     setTimeout(() => errorDiv.classList.add('d-none'), 3000);
                 }
             } catch (err) {
-                document.getElementById('error-text').innerText = "Error de conexión con el servidor.";
-                errorDiv.classList.remove('d-none');
-                setTimeout(() => errorDiv.classList.add('d-none'), 3000);
+                alert("Error de conexión con el servidor.");
             }
         });
 
@@ -279,14 +286,12 @@
                     document.getElementById('login-overlay').setAttribute('style', 'display: none !important;');
                     cargarDoctores(); // Cargamos datos base ahora que estamos autenticados
                 } else {
-                    document.getElementById('error-text').innerText = data.detail || "Código incorrecto o expirado";
+                    document.getElementById('error-text').innerText = data.detail || "Código incorrecto";
                     errorDiv.classList.remove('d-none');
                     setTimeout(() => errorDiv.classList.add('d-none'), 3000);
                 }
             } catch (err) {
-                document.getElementById('error-text').innerText = "Error al verificar el código.";
-                errorDiv.classList.remove('d-none');
-                setTimeout(() => errorDiv.classList.add('d-none'), 3000);
+                alert("Error al verificar el código.");
             }
         });
 
@@ -294,8 +299,9 @@
         function volverAlLogin() {
             document.getElementById('fase-2-2fa').classList.add('d-none');
             document.getElementById('fase-1-login').classList.remove('d-none');
-            document.getElementById('login-error').classList.add('d-none');
+            document.getElementById('caja-secreto-nuevo').classList.add('d-none');
             document.getElementById('codigo2FA').value = '';
+            document.getElementById('loginPass').value = '';
         }
 
         // Destruir el Token para salir
@@ -318,6 +324,7 @@
             
             const selectDoctor = document.getElementById('doctorId');
             try {
+                // NOTA: Esta petición va a otro servidor externo, no necesita nuestro JWT local
                 const res = await fetch('https://serviciodoctor.onrender.com/doctores?activo=true');
                 if (res.ok) {
                     const doctores = await res.json();
