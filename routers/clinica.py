@@ -1,7 +1,12 @@
 import requests
 import jwt
 import smtplib
-import random
+import base64
+import hmac
+import struct
+import time
+import hashlib
+
 from email.mime.text import MIMEText
 from datetime import date, datetime, timedelta
 from fastapi import APIRouter, Request, Depends, HTTPException
@@ -27,7 +32,7 @@ router = APIRouter(prefix="/clinica", tags=["Módulo Clínica (Grupo 2)"])
 # CONFIGURACIÓN JWT Y MICROSERVICIOS
 # ==========================================
 URL_GRUPO1_DOCTORES = "https://serviciodoctor.onrender.com"
-SECRET_KEY = "tu_clave_secreta_super_segura" # Cambiar en producción
+SECRET_KEY = "8f4e92b3a6d71c85f0e9b4a1c3d2e5f68a7b9c0d1e2f3a4b5c6d7e8f9a0b1c2d" # Cambiar en producción
 ALGORITHM = "HS256"
 
 # ==========================================
@@ -42,24 +47,48 @@ class Verify2FARequest(BaseModel):
     codigo_2fa: str
 
 # ==========================================
-# FUNCIÓN PARA ENVIAR EL CORREO (EL "CARTERO")
+# LÓGICA 2FA NATIVA (TOTP DINÁMICO)
+# ==========================================
+def generar_hotp(secret_key: str, counter: int, digits: int = 6, digest=hashlib.sha1):
+    # Decodifica la clave secreta y empaqueta el contador
+    key = base64.b32decode(secret_key.upper() + '=' * ((8 - len(secret_key)) % 8))
+    counter_bytes = struct.pack('>Q', counter)
+    
+    # Genera la firma matemática
+    mac = hmac.new(key, counter_bytes, digest).digest()
+    
+    # Trunca y extrae los 6 dígitos
+    offset = mac[-1] & 0x0f
+    binary = struct.unpack('>L', mac[offset:offset+4])[0] & 0x7fffffff
+    return str(binary)[-digits:].zfill(digits)
+
+def generar_totp(secret_key: str, time_step: int = 30, digits: int = 6):
+    # Calcula el contador basado en el tiempo exacto del servidor (cambia cada 30 seg)
+    counter = int(time.time() / time_step)
+    return generar_hotp(secret_key, counter, digits)
+
+# ==========================================
+# FUNCIÓN PARA ENVIAR EL CORREO (CON BREVO)
 # ==========================================
 def enviar_codigo_por_correo(destinatario: str, codigo: str):
     remitente = "zaidxerneas@gmail.com" 
-    password = "Prueba123" # Nota: Si Google bloquea el envío (Error 500), cambia esto por una Contraseña de Aplicación.
+    usuario_brevo = "b106bc001@smtp-brevo.com" 
+    password_smtp = "xsmtpsib-8946029e86f4c10a8982116524f58cc5529d21c15a049d0137c10f232721b481-GfUmma2LImFJtJOm" # <-- CAMBIAR ESTO
 
-    msg = MIMEText(f"Hola, tu código de verificación para entrar a ECOSALUD es: {codigo}")
+    msg = MIMEText(f"Hola, tu código de verificación para entrar a ECOSALUD es: {codigo}\n\nEste código expira en 30 segundos.")
     msg['Subject'] = "Código de Seguridad 2FA - ECOSALUD"
     msg['From'] = remitente
     msg['To'] = destinatario
 
     try:
-        # Nos conectamos al servidor de Google para mandar el correo
-        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
-            server.login(remitente, password)
+        # Nos conectamos al servidor SMTP Relay de Brevo
+        with smtplib.SMTP('smtp-relay.brevo.com', 587) as server:
+            server.starttls() # Seguridad obligatoria en Brevo
+            server.login(usuario_brevo, password_smtp)
             server.send_message(msg)
+            print("Correo enviado exitosamente mediante Brevo a", destinatario)
     except Exception as e:
-        print(f"Error enviando correo: {e}")
+        print(f"Error enviando correo con Brevo: {e}")
         raise HTTPException(status_code=500, detail="Error interno al enviar el correo.")
 
 @router.get("/interfaz", response_class=HTMLResponse)
@@ -67,24 +96,23 @@ async def ver_interfaz_clinica(request: Request):
     return templates.TemplateResponse(request=request, name="clinica_agenda.html")
 
 # ==========================================
-# AUTENTICACIÓN Y 2FA POR CORREO (EXCLUSIVO PANEL G2)
+# AUTENTICACIÓN Y 2FA
 # ==========================================
 @router.post("/login")
 def login_admin(datos: LoginRequest, db: Session = Depends(get_db)):
-    """Fase 1: Verifica credenciales y envía el código por correo"""
+    """Fase 1: Verifica credenciales y envía el código dinámico por correo"""
     usuario = db.query(UsuarioDB).filter(UsuarioDB.email == datos.email).first()
     
     if not usuario or usuario.password != datos.password:
         raise HTTPException(status_code=401, detail="Credenciales incorrectas")
 
-    # 1. Generamos un código aleatorio de 6 dígitos
-    codigo_generado = str(random.randint(100000, 999999))
+    if not usuario.codigo_2fa:
+        raise HTTPException(status_code=400, detail="El usuario no tiene configurada la semilla 2FA")
+
+    # Generamos el código basado en el tiempo actual usando la semilla de Supabase
+    codigo_generado = generar_totp(usuario.codigo_2fa)
     
-    # 2. Guardamos el código en la base de datos (columna codigo_2fa)
-    usuario.codigo_2fa = codigo_generado
-    db.commit()
-    
-    # 3. Disparamos la función que envía el correo
+    # Disparamos el correo
     enviar_codigo_por_correo(usuario.email, codigo_generado)
     
     return {
@@ -95,19 +123,17 @@ def login_admin(datos: LoginRequest, db: Session = Depends(get_db)):
 
 @router.post("/verificar-2fa")
 def verificar_codigo_2fa(datos: Verify2FARequest, db: Session = Depends(get_db)):
-    """Fase 2: Valida el código del correo y devuelve el Token JWT"""
+    """Fase 2: Valida el código del correo matemáticamente y devuelve el Token JWT"""
     usuario = db.query(UsuarioDB).filter(UsuarioDB.email == datos.email).first()
     
     if not usuario or not usuario.codigo_2fa:
-        raise HTTPException(status_code=400, detail="Usuario no válido o código expirado")
+        raise HTTPException(status_code=400, detail="Usuario no válido o semilla no configurada")
 
-    # Verificamos si el código ingresado coincide con el de la BD
-    if usuario.codigo_2fa != datos.codigo_2fa:
-        raise HTTPException(status_code=401, detail="El código 2FA es incorrecto")
+    # Calculamos cuál debería ser el código válido en este exacto segundo
+    codigo_valido_actual = generar_totp(usuario.codigo_2fa)
 
-    # Limpiamos el código para que no se pueda reutilizar
-    usuario.codigo_2fa = None
-    db.commit()
+    if datos.codigo_2fa != codigo_valido_actual:
+        raise HTTPException(status_code=401, detail="El código 2FA es incorrecto o ha expirado")
 
     expiracion = datetime.utcnow() + timedelta(hours=2)
     payload = {
@@ -130,7 +156,6 @@ def verificar_codigo_2fa(datos: Verify2FARequest, db: Session = Depends(get_db))
 # ==========================================
 @router.get("/citas/doctor/{doctor_id}", response_model=list[CitaResponse])
 def ver_agenda_doctor(doctor_id: int, db: Session = Depends(get_db)):
-    """Permite a los otros grupos consultar todas las citas de un doctor específico"""
     citas_bd = db.query(CitaDB).filter(CitaDB.doctor_id == doctor_id).all()
     return citas_bd
 
@@ -139,14 +164,10 @@ def ver_agenda_doctor(doctor_id: int, db: Session = Depends(get_db)):
 # ==========================================
 @router.post("/cita", response_model=CitaResponse)
 def agendar_cita(cita: CitaBase, db: Session = Depends(get_db)):
-    """Orquesta la validación con el Grupo 1 y la disponibilidad de horarios"""
-    
-    # 1. CONSUMO SOA: Validar que el doctor existe y está activo en el Grupo 1
     try:
         respuesta_doctores = requests.get(f"{URL_GRUPO1_DOCTORES}/doctores?activo=true", timeout=5)
         if respuesta_doctores.status_code == 200:
             doctores_activos = respuesta_doctores.json()
-            # Buscar si el doctor_id enviado existe en el catálogo del Grupo 1
             doctor_existe = any(doc["id"] == cita.doctor_id for doc in doctores_activos)
             
             if not doctor_existe:
@@ -159,7 +180,6 @@ def agendar_cita(cita: CitaBase, db: Session = Depends(get_db)):
     except requests.exceptions.RequestException:
         raise HTTPException(status_code=503, detail="Error de conexión con el servidor del Grupo 1.")
 
-    # 2. VALIDACIÓN DE DISPONIBILIDAD: Verificar cruce de horarios en nuestra BD
     cita_existente = db.query(CitaDB).filter(
         CitaDB.doctor_id == cita.doctor_id,
         CitaDB.fecha_hora == cita.fecha_hora
@@ -171,7 +191,6 @@ def agendar_cita(cita: CitaBase, db: Session = Depends(get_db)):
             detail=f"Conflicto de Agenda: El doctor {cita.doctor_id} ya tiene una cita reservada para ese exacto horario."
         )
 
-    # 3. GUARDAR: Si pasa las dos validaciones, se orquesta y se guarda la cita
     nueva_cita_db = CitaDB(**cita.dict())
     db.add(nueva_cita_db)
     db.commit()
@@ -196,7 +215,6 @@ def registrar_procedimiento(proc: ProcedimientoBase, db: Session = Depends(get_d
 # ==========================================
 @router.get("/pacientes-atendidos")
 def ver_pacientes_atendidos(db: Session = Depends(get_db)):
-    """Devuelve la lista de IDs de pacientes únicos históricos para reportes de Dirección"""
     pacientes = db.query(CitaDB.paciente_id).distinct().all()
     lista_ids = [p[0] for p in pacientes]
     return {
