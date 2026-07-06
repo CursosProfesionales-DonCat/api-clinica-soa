@@ -37,5 +37,5 @@ class UsuarioDB(Base):
     email = Column(String(150), unique=True, index=True, nullable=False)
     password = Column(String(255), nullable=False)  
     
-    # CAMBIO AQUÍ: Ahora guardamos un string de 6 dígitos en lugar de una clave base32
-    codigo_2fa = Column(String(6), nullable=True)
+    # CORRECCIÓN AQUÍ: Se aumenta el tamaño del String para guardar la clave secreta de pyotp
+    codigo_2fa = Column(String(32), nullable=True)
