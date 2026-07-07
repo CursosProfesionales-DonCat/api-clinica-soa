@@ -25,10 +25,10 @@ app = FastAPI(
 # ========================================================
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # El asterisco permite que cualquier IP o web se conecte
+    allow_origins=["*"],  
     allow_credentials=True,
-    allow_methods=["*"],  # Permite métodos GET, POST, PUT, DELETE
-    allow_headers=["*"],  # Permite cualquier cabecera
+    allow_methods=["*"],  
+    allow_headers=["*"],  
 )
 
 # ========================================================
@@ -92,6 +92,18 @@ app.include_router(clinica.router)
 def ruta_principal():
     """Si alguien entra a la URL base, lo mandamos a la interfaz"""
     return RedirectResponse(url="/clinica/interfaz")
+
+# ========================================================
+# DETECCIÓN CONSTANTE (HEALTH CHECK)
+# ========================================================
+@app.get("/actuator/health", tags=["Monitorización"])
+def health_check():
+    """Ruta para que un orquestador verifique la salud en tiempo real"""
+    return {
+        "status": "UP", 
+        "timestamp": time.time(),
+        "service": "ECOSALUD-Gateway"
+    }
 
 def abrir_navegador():
     time.sleep(2) 

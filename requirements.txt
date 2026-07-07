@@ -8,3 +8,5 @@ PyJWT
 bcrypt
 python-dotenv
 python-multipart
+tenacity
+circuitbreaker

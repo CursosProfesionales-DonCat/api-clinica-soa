@@ -19,7 +19,6 @@ class CitaResponse(CitaBase):
 
     # Configuración esencial para que SQLAlchemy se comunique con FastAPI
     class Config:
-        orm_mode = True
         from_attributes = True
 
 # ---- Esquemas para Procedimientos ----
@@ -38,12 +37,3 @@ class ProcedimientoResponse(ProcedimientoBase):
     class Config:
         orm_mode = True
         from_attributes = True
-
-# ---- Esquemas para Autenticación (NUEVO) ----
-class LoginRequest(BaseModel):
-    email: str
-    password: str
-
-class Verify2FARequest(BaseModel):
-    email: str
-    codigo: str
