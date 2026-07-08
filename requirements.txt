@@ -4,5 +4,9 @@ sqlalchemy
 psycopg2-binary
 jinja2
 requests
+PyJWT
+bcrypt
+python-dotenv
+python-multipart
 tenacity
 circuitbreaker

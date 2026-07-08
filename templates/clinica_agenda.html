@@ -136,32 +136,44 @@
 </head>
 <body>
 
-    <div id="login-overlay" class="d-flex align-items-center justify-content-center" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999; display: flex !important;">
-        <div class="card shadow-lg p-5 border-0" style="width: 100%; max-width: 420px; background: white; border-radius: 16px;">
-            <div class="card-body text-center p-0">
-                <div class="mb-3" style="color: var(--medical-primary);"><i class="bi bi-heart-pulse-fill" style="font-size: 4rem;"></i></div>
-                <h3 class="fw-bold mb-1" style="color: var(--medical-sidebar);">ECOSALUD</h3>
-                <p class="text-muted small mb-4">Módulo de Gestión Clínica Central</p>
+    <div id="login-overlay" class="d-flex align-items-center justify-content-center" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: #2c3e50; z-index: 9999; display: flex !important;">
+        <div class="card shadow-lg p-4 border-0 rounded-4" style="width: 100%; max-width: 400px; background: white;">
+            <div class="card-body text-center">
+                <div class="text-primary mb-3"><i class="bi bi-shield-lock-fill" style="font-size: 3.5rem;"></i></div>
+                <h4 class="fw-bold mb-1 text-dark">ECOSALUD SISTEMAS</h4>
+                <p class="text-muted small mb-4">Módulo de Clínica Central</p>
                 
-                <div id="login-error" class="alert alert-danger d-none small py-2 fw-bold rounded-3"><i class="bi bi-exclamation-triangle-fill"></i> Credenciales inválidas en BD</div>
+                <div id="login-error" class="alert alert-danger d-none small py-2 fw-bold"><i class="bi bi-exclamation-triangle-fill"></i> <span id="error-text">Credenciales inválidas</span></div>
                 
-                <form id="formLogin">
-                    <div class="mb-3 text-start">
-                        <label class="form-label small fw-bold text-secondary">Usuario Administrador</label>
-                        <div class="input-group">
-                            <span class="input-group-text bg-light border-end-0"><i class="bi bi-person text-muted"></i></span>
-                            <input type="email" id="loginUser" class="form-control border-start-0" placeholder="admin@ecosalud.com" required>
+                <div id="fase-1-login">
+                    <form id="formLogin">
+                        <div class="mb-3 text-start">
+                            <label class="form-label small fw-bold text-secondary">Usuario Administrador</label>
+                            <input type="email" id="loginUser" class="form-control" placeholder="admin@ecosalud.com" required>
                         </div>
-                    </div>
-                    <div class="mb-4 text-start">
-                        <label class="form-label small fw-bold text-secondary">Contraseña</label>
-                        <div class="input-group">
-                            <span class="input-group-text bg-light border-end-0"><i class="bi bi-key text-muted"></i></span>
-                            <input type="password" id="loginPass" class="form-control border-start-0" placeholder="••••••••" required>
+                        <div class="mb-4 text-start">
+                            <label class="form-label small fw-bold text-secondary">Contraseña</label>
+                            <input type="password" id="loginPass" class="form-control" placeholder="••••••••" required>
                         </div>
+                        <button type="submit" class="btn btn-primary w-100 py-2 fw-bold fs-5 shadow-sm">Verificar <i class="bi bi-arrow-right-circle"></i></button>
+                    </form>
+                </div>
+
+                <div id="fase-2-2fa" class="d-none">
+                    <h5 class="fw-bold mb-2">Verificación de 2 Pasos</h5>
+                    <p class="small text-muted mb-3">Ingresa el código de 6 dígitos de tu aplicación autenticadora (Google Authenticator).</p>
+
+                    <div id="caja-secreto-nuevo" class="alert alert-warning d-none text-start small">
+                        <strong>¡Primera vez!</strong> Configura tu app con esta clave secreta:
+                        <h4 id="texto-secreto" class="text-center mt-2 fw-bold text-danger" style="letter-spacing: 3px;"></h4>
                     </div>
-                    <button type="submit" class="btn btn-primary w-100 py-2 fs-5 mt-2">Ingresar al Sistema <i class="bi bi-arrow-right-short"></i></button>
-                </form>
+
+                    <form id="form2FA">
+                        <input type="text" id="codigo2FA" class="form-control text-center fs-3 fw-bold mb-3" placeholder="000000" maxlength="6" required autocomplete="off">
+                        <button type="submit" class="btn btn-success w-100 py-2 fw-bold fs-5 shadow-sm">Ingresar al Sistema <i class="bi bi-shield-check"></i></button>
+                        <button type="button" class="btn btn-link text-secondary mt-2 small" onclick="volverAlLogin()">Volver atrás</button>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
@@ -330,10 +342,33 @@
     <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
 
     <script>
-        if (localStorage.getItem('sesion_clinica') === 'activa') {
+        // Utilidad global para recordar el email entre el paso 1 y 2 de la autenticación
+        let emailTemporal = "";
+
+        // Revisar si ya tenemos un Token JWT guardado
+        if (localStorage.getItem('token_clinica')) {
             document.getElementById('login-overlay').setAttribute('style', 'display: none !important;');
         }
 
+        // Utilidad para inyectar el Token en TODAS las peticiones hacia nuestro backend
+        function getAuthHeaders() {
+            return {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token_clinica')}`
+            };
+        }
+
+        // Manejador central de errores de sesión (Para cuando expira el token de 2 horas)
+        function manejarErrorSesion(response) {
+            if (response.status === 401 || response.status === 403) {
+                alert("Tu sesión ha expirado o es inválida. Por favor, inicia sesión de nuevo.");
+                cerrarSesion();
+                return true;
+            }
+            return false;
+        }
+
+        // --- AUTENTICACIÓN: FASE 1 (Login) ---
         document.getElementById('formLogin').addEventListener('submit', async function(e) {
             e.preventDefault();
             const email = document.getElementById('loginUser').value;
@@ -346,24 +381,77 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email, password })
                 });
+                
+                const data = await response.json();
 
-                if (response.ok) {
-                    localStorage.setItem('sesion_clinica', 'activa');
-                    document.getElementById('login-overlay').setAttribute('style', 'display: none !important;');
+                if (response.ok && data.requiere_2fa) {
+                    // Contraseña correcta, pasamos a pedir el código
+                    emailTemporal = email;
+                    document.getElementById('fase-1-login').classList.add('d-none');
+                    document.getElementById('fase-2-2fa').classList.remove('d-none');
+                    errorDiv.classList.add('d-none');
+
+                    // Si es la primera vez, mostramos la clave para configurar la app
+                    if (data.secreto_para_app) {
+                        document.getElementById('caja-secreto-nuevo').classList.remove('d-none');
+                        document.getElementById('texto-secreto').innerText = data.secreto_para_app;
+                    }
                 } else {
+                    document.getElementById('error-text').innerText = data.detail || "Credenciales incorrectas";
                     errorDiv.classList.remove('d-none');
                     setTimeout(() => errorDiv.classList.add('d-none'), 3000);
                 }
             } catch (err) {
-                alert("Error de conexión con el servidor Gateway.");
+                alert("Error de conexión con el servidor.");
             }
         });
 
+        // --- AUTENTICACIÓN: FASE 2 (Código de 6 dígitos) ---
+        document.getElementById('form2FA').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const codigo_2fa = document.getElementById('codigo2FA').value;
+            const errorDiv = document.getElementById('login-error');
+
+            try {
+                const response = await fetch('/clinica/verificar-2fa', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: emailTemporal, codigo_2fa: codigo_2fa })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.access_token) {
+                    // ¡ÉXITO! Guardamos el Token JWT y ocultamos la pantalla
+                    localStorage.setItem('token_clinica', data.access_token);
+                    document.getElementById('login-overlay').setAttribute('style', 'display: none !important;');
+                    cargarDoctores(); // Cargamos datos base ahora que estamos autenticados
+                } else {
+                    document.getElementById('error-text').innerText = data.detail || "Código incorrecto";
+                    errorDiv.classList.remove('d-none');
+                    setTimeout(() => errorDiv.classList.add('d-none'), 3000);
+                }
+            } catch (err) {
+                alert("Error al verificar el código.");
+            }
+        });
+
+        // Función para el botón "Volver atrás" en la pantalla de 2FA
+        function volverAlLogin() {
+            document.getElementById('fase-2-2fa').classList.add('d-none');
+            document.getElementById('fase-1-login').classList.remove('d-none');
+            document.getElementById('caja-secreto-nuevo').classList.add('d-none');
+            document.getElementById('codigo2FA').value = '';
+            document.getElementById('loginPass').value = '';
+        }
+
+        // Destruir el Token para salir
         function cerrarSesion() {
-            localStorage.removeItem('sesion_clinica');
+            localStorage.removeItem('token_clinica');
             location.reload();
         }
 
+        // Control de Vistas (Navegación Lateral)
         function cambiarVista(idVista, elemento) {
             document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.menu-link').forEach(el => el.classList.remove('active', 'bg-primary'));
@@ -375,9 +463,12 @@
         // CARGAS INICIALES DESDE MICROSERVICIOS
         // ==========================================
         async function cargarDoctores() {
+            if (!localStorage.getItem('token_clinica')) return; // No cargar si no hay sesión
+            
             const selectDoctor = document.getElementById('doctorId');
             const selectDoctorBusqueda = document.getElementById('doctorBusqueda');
             try {
+                // NOTA: Esta petición va a otro servidor externo, no necesita nuestro JWT local
                 const res = await fetch('https://serviciodoctor.onrender.com/doctores?activo=true');
                 if (res.ok) {
                     const doctores = await res.json();
@@ -408,95 +499,9 @@
                 }
             } catch (err) { console.error("Error al cargar pacientes"); }
         }
+        document.addEventListener("DOMContentLoaded", cargarDoctores);
 
-        // NUEVO: CARGAR TODAS LAS CITAS Y CONVERTIR A BUSCADOR (TOM SELECT)
-        let buscadorCitasInstancia = null;
-        async function cargarTodasLasCitasParaBuscador() {
-            const selectCita = document.getElementById('procCitaId');
-            try {
-                const res = await fetch('/clinica/citas');
-                if (res.ok) {
-                    const citas = await res.json();
-                    let opcionesHTML = '<option value="">Busque por ID de Cita o Paciente...</option>';
-                    
-                    citas.forEach(cita => {
-                        const fechaObj = new Date(cita.fecha_hora);
-                        const fechaStr = fechaObj.toLocaleString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' });
-                        // Solo mostramos citas que no estén canceladas
-                        if(cita.estado !== 'CANCELADA') {
-                            opcionesHTML += `<option value="${cita.id}">Cita #${cita.id} | Paciente ID: ${cita.paciente_id} | ${fechaStr}</option>`;
-                        }
-                    });
-                    selectCita.innerHTML = opcionesHTML;
-                    
-                    // Inicializamos la librería del buscador
-                    if(buscadorCitasInstancia) buscadorCitasInstancia.destroy();
-                    buscadorCitasInstancia = new TomSelect("#procCitaId", {
-                        create: false,
-                        sortField: { field: "text", direction: "asc" }
-                    });
-                }
-            } catch (err) { console.error("Error cargando histórico de citas"); }
-        }
-
-        document.addEventListener("DOMContentLoaded", () => {
-            cargarDoctores();
-            cargarPacientes();
-            cargarTodasLasCitasParaBuscador();
-        });
-
-        // ==========================================
-        // CONTROLADOR DE ESTADOS (BOTONES DE LA TABLA)
-        // ==========================================
-        async function actualizarEstadoCita(citaId, nuevoEstado) {
-            if (!confirm(`¿Está seguro de cambiar el estado de la cita #${citaId} a ${nuevoEstado}?`)) return;
-            try {
-                const res = await fetch(`/clinica/cita/${citaId}/estado?nuevo_estado=${nuevoEstado}`, { method: 'PUT' });
-                if (res.ok) {
-                    alert("Estado actualizado correctamente.");
-                    if (document.getElementById('fechaBusqueda').value) buscarAgenda();
-                    if (document.getElementById('doctorBusqueda').value) buscarPorDoctor();
-                    verificarHorariosDoctor();
-                    cargarTodasLasCitasParaBuscador(); // Actualiza el select de procedimientos
-                } else {
-                    alert("Error al intentar cambiar el estado.");
-                }
-            } catch (err) { alert("Error de red."); }
-        }
-
-        function construirFilaTabla(cita) {
-            const horaStr = new Date(cita.fecha_hora).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-            const fechaStr = new Date(cita.fecha_hora).toLocaleDateString();
-            
-            // LÓGICA CORREGIDA PARA QUE RECONOZCA "AGENDADA"
-            let badgeColor = 'bg-secondary';
-            if (cita.estado === 'AGENDADA') badgeColor = 'bg-primary text-white';
-            if (cita.estado === 'ATENDIDA') badgeColor = 'bg-success text-white';
-            if (cita.estado === 'CANCELADA') badgeColor = 'bg-danger text-white';
-
-            let botonesAccion = '';
-            if (cita.estado === 'AGENDADA') {
-                botonesAccion = `
-                    <button onclick="actualizarEstadoCita(${cita.id}, 'ATENDIDA')" class="btn btn-sm btn-outline-success py-0 px-2 small me-1 shadow-sm"><i class="bi bi-check-lg"></i> Atender</button>
-                    <button onclick="actualizarEstadoCita(${cita.id}, 'CANCELADA')" class="btn btn-sm btn-outline-danger py-0 px-2 small shadow-sm"><i class="bi bi-x-lg"></i> Cancelar</button>
-                `;
-            } else {
-                botonesAccion = `<span class="text-muted small"><em>${cita.estado.charAt(0) + cita.estado.slice(1).toLowerCase()}</em></span>`;
-            }
-
-            return `
-                <tr>
-                    <td class="fw-bold text-primary">#${cita.id}</td>
-                    <td><span class="badge bg-secondary">PCT-${cita.paciente_id}</span></td>
-                    <td><span class="badge bg-info text-dark">DOC-${cita.doctor_id}</span></td>
-                    <td>${fechaStr} ${horaStr}</td>
-                    <td>${cita.motivo || 'Sin detalle'}</td>
-                    <td><span class="badge ${badgeColor}">${cita.estado}</span></td>
-                    <td>${botonesAccion}</td>
-                </tr>
-            `;
-        }
-
+        // --- ENDPOINT: DISPONIBILIDAD DE DOCTOR (Requiere Token) ---
         async function verificarHorariosDoctor() {
             const doctorId = document.getElementById('doctorId').value;
             const contenedor = document.getElementById('contenedorDisponibilidad');
@@ -504,7 +509,10 @@
             if (!doctorId) { contenedor.classList.add('d-none'); return; }
 
             try {
-                const response = await fetch(`/clinica/citas/doctor/${doctorId}`);
+                // INYECTAMOS LOS HEADERS JWT AQUÍ
+                const response = await fetch(`/clinica/citas/doctor/${doctorId}`, { headers: getAuthHeaders() });
+                if (manejarErrorSesion(response)) return;
+
                 if (response.ok) {
                     const citas = await response.json();
                     lista.innerHTML = "";
@@ -525,6 +533,7 @@
             } catch (err) { console.error(err); }
         }
 
+        // --- ENDPOINT POST: GUARDAR CITA (Requiere Token) ---
         document.getElementById('formCita').addEventListener('submit', async function(e) {
             e.preventDefault();
             const payload = {
@@ -532,7 +541,15 @@
                 paciente_id: parseInt(document.getElementById('pacienteId').value), doctor_id: parseInt(document.getElementById('doctorId').value),
                 fecha_hora: document.getElementById('fechaHora').value + ":00", duracion_minutos: 30, motivo: document.getElementById('motivo').value
             };
-            const response = await fetch('/clinica/cita', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+
+            // INYECTAMOS LOS HEADERS JWT EN EL POST
+            const response = await fetch('/clinica/cita', {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify(payload)
+            });
+            if (manejarErrorSesion(response)) return;
+
             const msj = document.getElementById('mensajeCita');
             msj.className = 'alert mt-3';
             if (response.ok) {
@@ -549,10 +566,14 @@
             }
         });
 
+        // --- ENDPOINT GET: VER AGENDA (Requiere Token) ---
         async function buscarAgenda() {
             const fecha = document.getElementById('fechaBusqueda').value;
             if(!fecha) return alert("Seleccione una fecha");
-            const response = await fetch('/clinica/citas/' + fecha);
+
+            const response = await fetch('/clinica/citas/' + fecha, { headers: getAuthHeaders() });
+            if (manejarErrorSesion(response)) return;
+            
             const citas = await response.json();
             const tbody = document.getElementById('tablaAgenda');
             tbody.innerHTML = "";
@@ -560,10 +581,24 @@
             citas.forEach(cita => { tbody.innerHTML += construirFilaTabla(cita); });
         }
 
+        // --- ENDPOINT POST: PROCEDIMIENTO (Requiere Token) ---
         document.getElementById('formProcedimiento').addEventListener('submit', async function(e) {
             e.preventDefault();
-            const payload = { cita_id: parseInt(document.getElementById('procCitaId').value), paciente_id: parseInt(document.getElementById('procPacienteId').value), clinica_id: 1, nombre_procedimiento: document.getElementById('procNombre').value, costo: parseFloat(document.getElementById('procCosto').value) };
-            const response = await fetch('/clinica/procedimiento', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            const payload = {
+                cita_id: parseInt(document.getElementById('procCitaId').value),
+                paciente_id: parseInt(document.getElementById('procPacienteId').value),
+                clinica_id: 1,
+                nombre_procedimiento: document.getElementById('procNombre').value,
+                costo: parseFloat(document.getElementById('procCosto').value)
+            };
+
+            const response = await fetch('/clinica/procedimiento', {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify(payload)
+            });
+            if (manejarErrorSesion(response)) return;
+
             const data = await response.json();
             const msj = document.getElementById('mensajeProc');
             msj.classList.remove('d-none');
@@ -576,10 +611,14 @@
             else { msj.className = 'alert alert-danger mt-3'; msj.textContent = "Error al guardar el procedimiento."; }
         });
 
+        // --- ENDPOINT GET: CITAS POR DOCTOR (Requiere Token) ---
         async function buscarPorDoctor() {
             const docId = document.getElementById('doctorBusqueda').value;
-            if(!docId) return alert("Seleccione un doctor del listado");
-            const response = await fetch('/clinica/citas/doctor/' + docId);
+            if(!docId) return alert("Ingrese el ID del doctor");
+
+            const response = await fetch('/clinica/citas/doctor/' + docId, { headers: getAuthHeaders() });
+            if (manejarErrorSesion(response)) return;
+            
             const citas = await response.json();
             const tbody = document.getElementById('tablaAgenda');
             tbody.innerHTML = "";

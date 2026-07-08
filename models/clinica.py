@@ -6,8 +6,6 @@ from datetime import datetime
 class CitaDB(Base):
     __tablename__ = "citas"
     
-    # __table_args__ = {'schema': 'clinicas'} 
-
     id = Column(Integer, primary_key=True, index=True)
     clinica_id = Column(Integer, nullable=False)
     sede_id = Column(Integer, nullable=False)
@@ -30,3 +28,14 @@ class ProcedimientoDB(Base):
     nombre_procedimiento = Column(String(150), nullable=False)
     costo = Column(Float, nullable=False)
     estado = Column(String(30), default='PROGRAMADO')
+
+# 3. TABLA DE USUARIOS / ADMINISTRADORES (Para el Login y 2FA por Correo)
+class UsuarioDB(Base):
+    __tablename__ = "usuarios"
+
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String(150), unique=True, index=True, nullable=False)
+    password = Column(String(255), nullable=False)  
+    
+    # CORRECCIÓN AQUÍ: Se aumenta el tamaño del String para guardar la clave secreta de pyotp
+    codigo_2fa = Column(String(32), nullable=True)
