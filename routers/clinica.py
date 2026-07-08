@@ -70,35 +70,34 @@ def generar_hotp(secret_key: str, counter: int, digits: int = 6, digest=hashlib.
     binary = struct.unpack('>L', mac[offset:offset+4])[0] & 0x7fffffff
     return str(binary)[-digits:].zfill(digits)
 
-def generar_totp(secret_key: str, time_step: int = 30, digits: int = 6):
+def generar_totp(secret_key: str, time_step: int = 300, digits: int = 6):
     # Calcula el contador basado en el tiempo exacto del servidor (cambia cada 30 seg)
     counter = int(time.time() / time_step)
     return generar_hotp(secret_key, counter, digits)
 
 # ==========================================
-# FUNCIÓN PARA ENVIAR EL CORREO (CON BREVO)
+# FUNCIÓN PARA ENVIAR EL CORREO (CON GMAIL)
 # ==========================================
 def enviar_codigo_por_correo(destinatario: str, codigo: str):
     remitente = "zaidxerneas@gmail.com" 
-    usuario_brevo = "b106bc001@smtp-brevo.com" 
     
-    # LEYENDO LA CLAVE DESDE RENDER PARA MAYOR SEGURIDAD
-    password_smtp = os.environ.get("BREVO_SMTP_KEY") 
+    # LEYENDO LA NUEVA CLAVE DE GMAIL DESDE RENDER
+    password_smtp = os.environ.get("GMAIL_APP_PASSWORD") 
 
-    msg = MIMEText(f"Hola, tu código de verificación para entrar a ECOSALUD es: {codigo}\n\nEste código expira en 30 segundos.")
+    msg = MIMEText(f"Hola, tu código de verificación para entrar a ECOSALUD es: {codigo}\n\nEste código expira en 5 minutos.")
     msg['Subject'] = "Código de Seguridad 2FA - ECOSALUD"
     msg['From'] = remitente
     msg['To'] = destinatario
 
     try:
-        # Nos conectamos al servidor SMTP Relay de Brevo
-        with smtplib.SMTP('smtp-relay.brevo.com', 2525) as server:
-            server.starttls() # Seguridad obligatoria en Brevo
-            server.login(usuario_brevo, password_smtp)
+        # Nos conectamos al servidor de Google directamente
+        with smtplib.SMTP('smtp.gmail.com', 587) as server:
+            server.starttls() # Seguridad de Google
+            server.login(remitente, password_smtp) # Login directo con tu correo y la clave de 16 letras
             server.send_message(msg)
-            print("Correo enviado exitosamente mediante Brevo a", destinatario)
+            print("Correo enviado exitosamente mediante Gmail a", destinatario)
     except Exception as e:
-        print(f"Error enviando correo con Brevo: {e}")
+        print(f"Error enviando correo con Gmail: {e}")
         raise HTTPException(status_code=500, detail="Error interno al enviar el correo.")
 
 @router.get("/interfaz", response_class=HTMLResponse)
