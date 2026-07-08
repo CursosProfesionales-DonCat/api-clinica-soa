@@ -74,14 +74,15 @@ def generar_totp(secret_key: str, time_step: int = 300, digits: int = 6):
     # Calcula el contador basado en el tiempo exacto del servidor (cambia cada 30 seg)
     counter = int(time.time() / time_step)
     return generar_hotp(secret_key, counter, digits)
+
 # ==========================================
 # FUNCIÓN PARA ENVIAR EL CORREO (CON BREVO)
 # ==========================================
 def enviar_codigo_por_correo(destinatario: str, codigo: str):
     remitente = "zaidxerneas@gmail.com" 
-    usuario_brevo = "b106bc001@smtp-brevo.com" # Tu usuario SMTP de Brevo
+    usuario_brevo = "b106bc001@smtp-brevo.com" # El usuario que confirmamos en tu captura
     
-    # LEYENDO LA CLAVE DE BREVO DESDE RENDER
+    # LEYENDO LA CLAVE DE BREVO DESDE LAS VARIABLES DE ENTORNO DE RENDER
     password_smtp = os.environ.get("BREVO_SMTP_KEY") 
 
     msg = MIMEText(f"Hola, tu código de verificación para entrar a ECOSALUD es: {codigo}\n\nEste código expira en 5 minutos.")
@@ -90,16 +91,16 @@ def enviar_codigo_por_correo(destinatario: str, codigo: str):
     msg['To'] = destinatario
 
     try:
-        # Usamos el puerto 2525 para evadir los bloqueos de Render
+        # Nos conectamos al relay de Brevo usando el puerto 2525 seguro para Render
         with smtplib.SMTP('smtp-relay.brevo.com', 2525) as server:
-            server.starttls() # Encriptación obligatoria requerida por Brevo
+            server.set_debuglevel(1)  # Modo espía activado para ver todo en el log de Render
+            server.starttls()         # Cifrado obligatorio de Brevo
             server.login(usuario_brevo, password_smtp) 
             server.send_message(msg)
             print("Correo enviado exitosamente mediante Brevo a", destinatario)
     except Exception as e:
         print(f"Error enviando correo con Brevo: {e}")
         raise HTTPException(status_code=500, detail="Error interno al enviar el correo.")
-
 @router.get("/interfaz", response_class=HTMLResponse)
 async def ver_interfaz_clinica(request: Request):
     return templates.TemplateResponse(request=request, name="clinica_agenda.html")
