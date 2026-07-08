@@ -90,10 +90,10 @@ def enviar_codigo_por_correo(destinatario: str, codigo: str):
     msg['To'] = destinatario
 
     try:
-        # Nos conectamos al servidor de Google directamente
-        with smtplib.SMTP('smtp.gmail.com', 587) as server:
-            server.starttls() # Seguridad de Google
-            server.login(remitente, password_smtp) # Login directo con tu correo y la clave de 16 letras
+        # Usamos SMTP_SSL directo en el puerto 465 (el túnel blindado que Render no bloquea)
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+            # OJO: Ya no ponemos server.starttls() porque esta conexión ya es 100% segura
+            server.login(remitente, password_smtp) 
             server.send_message(msg)
             print("Correo enviado exitosamente mediante Gmail a", destinatario)
     except Exception as e:
