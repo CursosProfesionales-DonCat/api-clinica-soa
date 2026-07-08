@@ -10,7 +10,7 @@ import hashlib
 
 from email.mime.text import MIMEText
 from datetime import date, datetime, timedelta
-from fastapi import APIRouter, Request, Depends, HTTPException
+from fastapi import APIRouter, Request, Depends, HTTPException, BackgroundTasks
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
@@ -108,7 +108,7 @@ async def ver_interfaz_clinica(request: Request):
 # AUTENTICACIÓN Y 2FA
 # ==========================================
 @router.post("/login")
-def login_admin(datos: LoginRequest, db: Session = Depends(get_db)):
+def login_admin(datos: LoginRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     """Fase 1: Verifica credenciales y envía el código dinámico por correo"""
     usuario = db.query(UsuarioDB).filter(UsuarioDB.email == datos.email).first()
     
