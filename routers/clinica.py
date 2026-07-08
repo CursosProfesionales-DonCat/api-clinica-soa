@@ -121,10 +121,9 @@ def login_admin(datos: LoginRequest, db: Session = Depends(get_db)):
     # Generamos el código basado en el tiempo actual
     codigo_generado = generar_totp(usuario.codigo_2fa)
     
-    # --- MODO PRUEBA: Comentamos el envío real hasta que Brevo nos active ---
-    # background_tasks.add_task(enviar_codigo_por_correo, usuario.email, codigo_generado)
+    # ESTA ES LA LÍNEA QUE DEBES ASEGURARTE DE QUE NO TENGA UN '#'
+    background_tasks.add_task(enviar_codigo_por_correo, usuario.email, codigo_generado)
     
-    # Imprimimos el código secreto en el log de Render para leerlo nosotros
     print(f"====== EL CÓDIGO DE ACCESO ES: {codigo_generado} ======")
     
     return {
