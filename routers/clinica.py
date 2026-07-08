@@ -92,7 +92,7 @@ def enviar_codigo_por_correo(destinatario: str, codigo: str):
 
     try:
         # Nos conectamos al servidor SMTP Relay de Brevo
-        with smtplib.SMTP('smtp-relay.brevo.com', 587) as server:
+        with smtplib.SMTP('smtp-relay.brevo.com', 2525) as server:
             server.starttls() # Seguridad obligatoria en Brevo
             server.login(usuario_brevo, password_smtp)
             server.send_message(msg)
