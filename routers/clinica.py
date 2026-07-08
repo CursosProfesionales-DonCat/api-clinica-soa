@@ -123,7 +123,7 @@ def login_admin(datos: LoginRequest, db: Session = Depends(get_db)):
     codigo_generado = generar_totp(usuario.codigo_2fa)
     
     # Disparamos el correo
-    enviar_codigo_por_correo(usuarios.email, codigo_generado)
+    enviar_codigo_por_correo(usuario.email, codigo_generado)
     
     return {
         "status": "success", 
