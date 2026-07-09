@@ -190,9 +190,10 @@
         <div class="col-md-2 sidebar">
             <h4 class="text-center"><i class="bi bi-hospital"></i> Clínica Sur</h4>
             <div class="mt-4">
-                <a onclick="cambiarVista('vista-agendar', this)" class="menu-link active"><i class="bi bi-calendar-plus me-2"></i> Agendar Cita</a>
-                <a onclick="cambiarVista('vista-agenda', this)" class="menu-link"><i class="bi bi-list-check me-2"></i> Agenda Diaria</a>
-                <a onclick="cambiarVista('vista-procedimientos', this)" class="menu-link"><i class="bi bi-file-medical me-2"></i> Procedimientos</a>
+                <!-- SE AGREGARON LOS IDs AQUÍ -->
+                <a id="menu-agendar" onclick="cambiarVista('vista-agendar', this)" class="menu-link active"><i class="bi bi-calendar-plus me-2"></i> Agendar Cita</a>
+                <a id="menu-agenda" onclick="cambiarVista('vista-agenda', this)" class="menu-link"><i class="bi bi-list-check me-2"></i> Agenda Diaria</a>
+                <a id="menu-procedimientos" onclick="cambiarVista('vista-procedimientos', this)" class="menu-link"><i class="bi bi-file-medical me-2"></i> Procedimientos</a>
             </div>
             
             <div style="position: absolute; bottom: 20px; width: 100%;">
@@ -201,7 +202,8 @@
         </div>
 
         <div class="topbar d-flex justify-content-between align-items-center">
-            <h5 class="m-0 fw-bold" style="color: var(--medical-sidebar);"><i class="bi bi-grid-1x2-fill text-primary me-2"></i> API Gateway - Orquestador (Grupo 2)</h5>
+            <!-- SE AGREGÓ EL ID topbar-title AQUÍ -->
+            <h5 id="topbar-title" class="m-0 fw-bold" style="color: var(--medical-sidebar);"><i class="bi bi-grid-1x2-fill text-primary me-2"></i> API Gateway - Orquestador (Grupo 2)</h5>
             <div>
                 <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 rounded-pill"><i class="bi bi-check-circle-fill me-1"></i> Nodos Conectados</span>
             </div>
