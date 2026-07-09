@@ -376,22 +376,22 @@
             return false;
         }
 
-        // --- RUTAS DE LOS MICROSERVICIOS ---
+       // --- RUTAS DE LOS MICROSERVICIOS ---
 const RUTAS_SERVIDORES = {
     clinica: { 
-        base: "", // Vacío porque es este mismo servidor
+        base: "", 
         login: "/clinica/login", 
         verify: "/clinica/verificar-2fa" 
     },
     doctor: { 
         base: "https://serviciodoctor.onrender.com", 
-        login: "/login", // <-- Cambiar por la ruta real que te dé G1
-        verify: "/verificar-2fa" // <-- Cambiar por la ruta real que te dé G1
+        login: "/api/auth/login",           // <--- Actualizado según la captura
+        verify: "/api/auth/verificar-2fa"   // <--- Actualizado según la captura
     },
     paciente: { 
         base: "https://backend-ecosalud.onrender.com", 
-        login: "/paciente/login", // <-- Cambiar por la ruta real que te dé G3
-        verify: "/paciente/verificar-2fa" // <-- Cambiar por la ruta real que te dé G3
+        login: "/paciente/login",           // (Pendiente de que el G3 confirme)
+        verify: "/paciente/verificar-2fa"   // (Pendiente de que el G3 confirme)
     }
 };
 
