@@ -499,7 +499,44 @@ document.getElementById('form2FA').addEventListener('submit', async function(e) 
             document.getElementById(idVista).classList.add('active');
             elemento.classList.add('active', 'bg-primary');
         }
+        // ==========================================
+        // GESTOR DE ROLES DINÁMICO
+        // ==========================================
+        function adaptarMenuPorRol() {
+            const rolActual = localStorage.getItem('rol_actual');
+            const menuAgendar = document.getElementById('menu-agendar');
+            const menuAgenda = document.getElementById('menu-agenda');
+            const menuProcedimientos = document.getElementById('menu-procedimientos');
+            const topbarTitle = document.getElementById('topbar-title');
 
+            if (rolActual === 'doctor') {
+                // Un doctor no debe agendar citas ni cobrar procedimientos
+                menuAgendar.classList.add('d-none');
+                menuProcedimientos.classList.add('d-none');
+                
+                // Cambiamos los textos para que se sienta personalizado
+                menuAgenda.innerHTML = '<i class="bi bi-calendar2-check me-2"></i> Mi Agenda Médica';
+                topbarTitle.innerHTML = '<i class="bi bi-heart-pulse-fill text-danger me-2"></i> Portal del Médico (G1)';
+                
+                // Forzamos la vista de la agenda
+                cambiarVista('vista-agenda', menuAgenda);
+
+            } else if (rolActual === 'paciente') {
+                // Un paciente no registra procedimientos
+                menuProcedimientos.classList.add('d-none');
+                
+                // Cambiamos textos
+                menuAgenda.innerHTML = '<i class="bi bi-clock-history me-2"></i> Mi Historial de Citas';
+                topbarTitle.innerHTML = '<i class="bi bi-person-badge-fill text-success me-2"></i> Portal del Paciente (G3)';
+                
+                // Forzamos la vista de agendar
+                cambiarVista('vista-agendar', menuAgendar);
+                
+            } else {
+                // Si es Clínica (Admin), ve absolutamente todo por defecto
+                topbarTitle.innerHTML = '<i class="bi bi-grid-1x2-fill text-primary me-2"></i> API Gateway - Orquestador (G2)';
+            }
+        }
         // ==========================================
         // CARGAS INICIALES DESDE MICROSERVICIOS
         // ==========================================
