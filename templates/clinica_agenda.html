@@ -376,73 +376,105 @@
             return false;
         }
 
-        // --- AUTENTICACIÓN: FASE 1 (Login) ---
-        document.getElementById('formLogin').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            const email = document.getElementById('loginUser').value;
-            const password = document.getElementById('loginPass').value;
-            const errorDiv = document.getElementById('login-error');
+        // --- RUTAS DE LOS MICROSERVICIOS ---
+const RUTAS_SERVIDORES = {
+    clinica: { 
+        base: "", // Vacío porque es este mismo servidor
+        login: "/clinica/login", 
+        verify: "/clinica/verificar-2fa" 
+    },
+    doctor: { 
+        base: "https://serviciodoctor.onrender.com", 
+        login: "/login", // <-- Cambiar por la ruta real que te dé G1
+        verify: "/verificar-2fa" // <-- Cambiar por la ruta real que te dé G1
+    },
+    paciente: { 
+        base: "https://backend-ecosalud.onrender.com", 
+        login: "/paciente/login", // <-- Cambiar por la ruta real que te dé G3
+        verify: "/paciente/verificar-2fa" // <-- Cambiar por la ruta real que te dé G3
+    }
+};
 
-            try {
-                const response = await fetch('/clinica/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, password })
-                });
-                
-                const data = await response.json();
+let emailTemporal = "";
+let rolSeleccionadoTemporal = ""; // Para saber a dónde enviar el 2FA
 
-                if (response.ok && data.requiere_2fa) {
-                    // Contraseña correcta, pasamos a pedir el código
-                    emailTemporal = email;
-                    document.getElementById('fase-1-login').classList.add('d-none');
-                    document.getElementById('fase-2-2fa').classList.remove('d-none');
-                    errorDiv.classList.add('d-none');
+// --- AUTENTICACIÓN: FASE 1 (Login Universal) ---
+document.getElementById('formLogin').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const email = document.getElementById('loginUser').value;
+    const password = document.getElementById('loginPass').value;
+    const rol = document.getElementById('loginRole').value;
+    const errorDiv = document.getElementById('login-error');
 
-                    // Si es la primera vez, mostramos la clave para configurar la app
-                    if (data.secreto_para_app) {
-                        document.getElementById('caja-secreto-nuevo').classList.remove('d-none');
-                        document.getElementById('texto-secreto').innerText = data.secreto_para_app;
-                    }
-                } else {
-                    document.getElementById('error-text').innerText = data.detail || "Credenciales incorrectas";
-                    errorDiv.classList.remove('d-none');
-                    setTimeout(() => errorDiv.classList.add('d-none'), 3000);
-                }
-            } catch (err) {
-                alert("Error de conexión con el servidor.");
-            }
+    // Determinamos a qué servidor disparar
+    const servidor = RUTAS_SERVIDORES[rol];
+    const urlDestino = servidor.base + servidor.login;
+
+    try {
+        const response = await fetch(urlDestino, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+        });
+        
+        const data = await response.json();
+
+        if (response.ok && data.requiere_2fa) {
+            emailTemporal = email;
+            rolSeleccionadoTemporal = rol; // Guardamos el rol para la Fase 2
+            
+            document.getElementById('fase-1-login').classList.add('d-none');
+            document.getElementById('fase-2-2fa').classList.remove('d-none');
+            errorDiv.classList.add('d-none');
+        } else {
+            document.getElementById('error-text').innerText = data.detail || "Credenciales incorrectas en el servidor de " + rol;
+            errorDiv.classList.remove('d-none');
+            setTimeout(() => errorDiv.classList.add('d-none'), 3000);
+        }
+    } catch (err) {
+        alert("Error de conexión con el servidor de " + rol);
+    }
+});
+
+// --- AUTENTICACIÓN: FASE 2 (Verificación 2FA Universal) ---
+document.getElementById('form2FA').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const codigo_2fa = document.getElementById('codigo2FA').value;
+    const errorDiv = document.getElementById('login-error');
+
+    // Recuperamos a qué servidor le toca verificar el token
+    const servidor = RUTAS_SERVIDORES[rolSeleccionadoTemporal];
+    const urlDestino = servidor.base + servidor.verify;
+
+    try {
+        const response = await fetch(urlDestino, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: emailTemporal, codigo_2fa: codigo_2fa })
         });
 
-        // --- AUTENTICACIÓN: FASE 2 (Código de 6 dígitos) ---
-        document.getElementById('form2FA').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            const codigo_2fa = document.getElementById('codigo2FA').value;
-            const errorDiv = document.getElementById('login-error');
+        const data = await response.json();
 
-            try {
-                const response = await fetch('/clinica/verificar-2fa', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: emailTemporal, codigo_2fa: codigo_2fa })
-                });
-
-                const data = await response.json();
-
-                if (response.ok && data.access_token) {
-                    // ¡ÉXITO! Guardamos el Token JWT y ocultamos la pantalla
-                    localStorage.setItem('token_clinica', data.access_token);
-                    document.getElementById('login-overlay').setAttribute('style', 'display: none !important;');
-                    cargarDoctores(); // Cargamos datos base ahora que estamos autenticados
-                } else {
-                    document.getElementById('error-text').innerText = data.detail || "Código incorrecto";
-                    errorDiv.classList.remove('d-none');
-                    setTimeout(() => errorDiv.classList.add('d-none'), 3000);
-                }
-            } catch (err) {
-                alert("Error al verificar el código.");
-            }
-        });
+        if (response.ok && data.access_token) {
+            // Guardamos el token y el rol de quien inició sesión
+            localStorage.setItem('token_clinica', data.access_token);
+            localStorage.setItem('rol_actual', rolSeleccionadoTemporal);
+            
+            document.getElementById('login-overlay').setAttribute('style', 'display: none !important;');
+            
+            // Aquí puedes agregar lógica para ocultar menús según el rol
+            // if(rolSeleccionadoTemporal === 'doctor') { document.getElementById('menu-agendar').style.display = 'none'; }
+            
+            cargarDoctores(); 
+        } else {
+            document.getElementById('error-text').innerText = data.detail || "Código incorrecto";
+            errorDiv.classList.remove('d-none');
+            setTimeout(() => errorDiv.classList.add('d-none'), 3000);
+        }
+    } catch (err) {
+        alert("Error al verificar el código con el servidor de " + rolSeleccionadoTemporal);
+    }
+});
 
         // Función para el botón "Volver atrás" en la pantalla de 2FA
         function volverAlLogin() {
