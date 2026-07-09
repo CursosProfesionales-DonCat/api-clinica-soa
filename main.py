@@ -42,6 +42,7 @@ async def verificar_token_2fa(request: Request, call_next):
         "/clinica/interfaz",
         "/clinica/login",
         "/clinica/verificar-2fa",
+        "/clinica/instalar-admin",  
         "/docs",           # Documentación de FastAPI
         "/openapi.json"    # Esquema de la API
     ]
