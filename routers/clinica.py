@@ -285,3 +285,31 @@ def ver_pacientes_atendidos(db: Session = Depends(get_db)):
         "total_pacientes_historicos": len(lista_ids),
         "ids_pacientes": lista_ids
     }
+
+@router.get("/instalar-admin")
+def instalar_admin_prueba(db: Session = Depends(get_db)):
+    """Ruta temporal para crear el usuario de prueba para los compañeros"""
+    usuario_existente = db.query(UsuarioDB).filter(UsuarioDB.email == "admin@ecosalud.com").first()
+    if usuario_existente:
+        return {"mensaje": "El administrador ya existe."}
+    
+    # Semilla estática en Base32 válida (Puedes usarla en Google Authenticator)
+    semilla_prueba = "JBSWY3DPEHPK3PXP" 
+    
+    nuevo_admin = UsuarioDB(
+        email="admin@ecosalud.com",
+        password="admin",
+        codigo_2fa=semilla_prueba
+    )
+    db.add(nuevo_admin)
+    db.commit()
+    
+    return {
+        "status": "success",
+        "mensaje": "Usuario creado exitosamente.",
+        "credenciales": {
+            "email": "admin@ecosalud.com",
+            "password": "admin",
+            "semilla_2fa_google_auth": semilla_prueba
+        }
+    }
