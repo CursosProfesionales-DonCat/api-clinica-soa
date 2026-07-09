@@ -357,8 +357,9 @@
 
         // Revisar si ya tenemos un Token JWT guardado
         if (localStorage.getItem('token_clinica')) {
-            document.getElementById('login-overlay').setAttribute('style', 'display: none !important;');
-        }
+    document.getElementById('login-overlay').setAttribute('style', 'display: none !important;');
+    adaptarMenuPorRol(); // <--- ¡AÑADIR ESTA LÍNEA AQUÍ!
+}
 
         // Utilidad para inyectar el Token en TODAS las peticiones hacia nuestro backend
         function getAuthHeaders() {
@@ -465,7 +466,7 @@ document.getElementById('form2FA').addEventListener('submit', async function(e) 
             
             // Aquí puedes agregar lógica para ocultar menús según el rol
             // if(rolSeleccionadoTemporal === 'doctor') { document.getElementById('menu-agendar').style.display = 'none'; }
-            
+            adaptarMenuPorRol(); 
             cargarDoctores(); 
         } else {
             document.getElementById('error-text').innerText = data.detail || "Código incorrecto";
