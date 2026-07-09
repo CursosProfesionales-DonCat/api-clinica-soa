@@ -11,10 +11,12 @@
     
     <style>
         :root {
-            --medical-primary: #005A9C;
-            --medical-sidebar: #0B2B46;
-            --medical-bg: #F4F7FB;
+            /* NUEVA PALETA DE COLORES EXTRAÍDA DE LA IMAGEN */
+            --medical-primary: #0A5B4D; /* Verde oscuro / Teal del botón */
+            --medical-sidebar: #074237; /* Verde aún más oscuro para el menú lateral */
+            --medical-bg: #F4F7FB;      /* Fondo general claro */
             --medical-text: #2C3E50;
+            --input-bg: #EEF2F9;        /* Fondo gris/azulado claro de los inputs */
         }
 
         body {
@@ -25,7 +27,7 @@
 
         .sidebar { 
             height: 100vh; 
-            background: linear-gradient(180deg, var(--medical-sidebar) 0%, #0F3D64 100%); 
+            background: linear-gradient(180deg, var(--medical-sidebar) 0%, #063d33 100%); 
             color: white; 
             padding-top: 25px; 
             position: fixed; 
@@ -38,6 +40,7 @@
             letter-spacing: 0.5px;
             color: #E2F1FF;
             margin-bottom: 2rem;
+            font-size: 1.3rem;
         }
 
         .sidebar a { 
@@ -54,7 +57,7 @@
         .sidebar a:hover, .sidebar a.active { 
             background-color: rgba(255, 255, 255, 0.05); 
             color: #FFFFFF;
-            border-left: 4px solid #4BB5FF;
+            border-left: 4px solid var(--medical-primary);
         }
 
         .topbar { 
@@ -85,7 +88,7 @@
             padding-bottom: 1rem !important;
         }
 
-        /* Botones Profesionales */
+        /* Botones Profesionales - Ajustados a la imagen */
         .btn-primary {
             background-color: var(--medical-primary);
             border-color: var(--medical-primary);
@@ -94,19 +97,21 @@
             padding: 10px 20px;
         }
         .btn-primary:hover {
-            background-color: #00467A;
-            border-color: #00467A;
+            background-color: #074237;
+            border-color: #074237;
         }
 
-        /* Inputs y Selects */
+        /* Inputs y Selects - Ajustados a la imagen */
         .form-control, .form-select {
+            background-color: var(--input-bg);
             border-radius: 8px;
-            padding: 10px 14px;
-            border: 1px solid #CED4DA;
+            padding: 12px 14px;
+            border: 1px solid transparent;
         }
         .form-control:focus, .form-select:focus {
+            background-color: #ffffff;
             border-color: var(--medical-primary);
-            box-shadow: 0 0 0 0.25rem rgba(0, 90, 156, 0.15);
+            box-shadow: 0 0 0 0.25rem rgba(10, 91, 77, 0.2);
         }
 
         /* Tablas */
@@ -128,20 +133,35 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
-        /* Overlay Login */
+        /* Overlay Login Ajustado */
         #login-overlay {
-            background: linear-gradient(135deg, var(--medical-sidebar) 0%, var(--medical-primary) 100%);
+            background-color: #E8EDF2;
+        }
+
+        /* Simulación de la línea de latido de la imagen */
+        .latido-linea {
+            width: 100%;
+            height: 40px;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 40' stroke='%230A5B4D' stroke-width='2' fill='none'%3E%3Cpath d='M0 20 L50 20 L60 5 L70 35 L80 15 L90 25 L100 20 L200 20'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: center;
+            margin-bottom: 20px;
         }
     </style>
 </head>
 <body>
 
-    <div id="login-overlay" class="d-flex align-items-center justify-content-center" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: #2c3e50; z-index: 9999; display: flex !important;">
-        <div class="card shadow-lg p-4 border-0 rounded-4" style="width: 100%; max-width: 400px; background: white;">
-            <div class="card-body text-center">
-                <div class="text-primary mb-3"><i class="bi bi-shield-lock-fill" style="font-size: 3.5rem;"></i></div>
-                <h4 class="fw-bold mb-1 text-dark">ECOSALUD SISTEMAS</h4>
-                <p class="text-muted small mb-4">Módulo de Clínica Central</p>
+    <div id="login-overlay" class="d-flex align-items-center justify-content-center" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999; display: flex !important;">
+        <div class="card shadow-sm p-4 border-0 rounded-4" style="width: 100%; max-width: 400px; background: white;">
+            <div class="card-body">
+                <!-- Título actualizado según imagen -->
+                <div class="text-start mb-2 d-flex align-items-center">
+                    <div style="width: 12px; height: 12px; background-color: var(--medical-primary); border-radius: 50%; margin-right: 8px;"></div>
+                    <h4 class="fw-bold mb-0 text-dark" style="color: var(--medical-primary) !important;">EcoSalud</h4>
+                </div>
+                <p class="text-muted small mb-3 text-start">Panel de Autenticación</p>
+                
+                <div class="latido-linea"></div>
                 
                 <div id="login-error" class="alert alert-danger d-none small py-2 fw-bold"><i class="bi bi-exclamation-triangle-fill"></i> <span id="error-text">Credenciales inválidas</span></div>
                 
@@ -149,27 +169,27 @@
                     <form id="formLogin">
                         <div class="mb-3 text-start">
                             <label class="form-label small fw-bold text-secondary">¿Quién eres?</label>
-                            <select id="loginRole" class="form-select border-primary bg-light" required>
+                            <select id="loginRole" class="form-select border-primary fw-bold" required>
                                 <option value="clinica" selected>Administrador (G2 - Clínica)</option>
-                                <option value="doctor">Doctor (G1)</option>
-                                <option value="paciente">Paciente (G3)</option>
+                                <option value="doctor">Panel del Doctor (G1)</option>
+                                <option value="paciente">Panel del Paciente (G3)</option>
                             </select>
                         </div>
                         <div class="mb-3 text-start">
-                            <label class="form-label small fw-bold text-secondary">Usuario Administrador</label>
-                            <input type="email" id="loginUser" class="form-control" placeholder="admin@ecosalud.com" required>
+                            <label class="form-label small fw-bold text-secondary">Correo o Colegiatura</label>
+                            <input type="email" id="loginUser" class="form-control" placeholder="usuario@ecosalud.com" required>
                         </div>
                         <div class="mb-4 text-start">
                             <label class="form-label small fw-bold text-secondary">Contraseña</label>
                             <input type="password" id="loginPass" class="form-control" placeholder="••••••••" required>
                         </div>
-                        <button type="submit" class="btn btn-primary w-100 py-2 fw-bold fs-5 shadow-sm">Verificar <i class="bi bi-arrow-right-circle"></i></button>
+                        <button type="submit" class="btn btn-primary w-100 py-2 fw-bold shadow-sm">Iniciar sesión</button>
                     </form>
                 </div>
 
                 <div id="fase-2-2fa" class="d-none">
-                    <h5 class="fw-bold mb-2">Verificación de 2 Pasos</h5>
-                    <p class="small text-muted mb-3">Ingresa el código de 6 dígitos de tu aplicación autenticadora (Google Authenticator).</p>
+                    <h5 class="fw-bold mb-2">Seguridad 2FA</h5>
+                    <p class="small text-muted mb-3">Ingresa el código de 6 dígitos de tu aplicación autenticadora.</p>
 
                     <div id="caja-secreto-nuevo" class="alert alert-warning d-none text-start small">
                         <strong>¡Primera vez!</strong> Configura tu app con esta clave secreta:
@@ -178,8 +198,8 @@
 
                     <form id="form2FA">
                         <input type="text" id="codigo2FA" class="form-control text-center fs-3 fw-bold mb-3" placeholder="000000" maxlength="6" required autocomplete="off">
-                        <button type="submit" class="btn btn-success w-100 py-2 fw-bold fs-5 shadow-sm">Ingresar al Sistema <i class="bi bi-shield-check"></i></button>
-                        <button type="button" class="btn btn-link text-secondary mt-2 small" onclick="volverAlLogin()">Volver atrás</button>
+                        <button type="submit" class="btn btn-primary w-100 py-2 fw-bold shadow-sm">Ingresar al Sistema</button>
+                        <button type="button" class="btn btn-link text-secondary mt-2 small w-100" onclick="volverAlLogin()">Volver atrás</button>
                     </form>
                 </div>
             </div>
@@ -188,9 +208,11 @@
 
     <div class="container-fluid p-0">
         <div class="col-md-2 sidebar">
-            <h4 class="text-center"><i class="bi bi-hospital"></i> Clínica Sur</h4>
-            <div class="mt-4">
-                <!-- SE AGREGARON LOS IDs AQUÍ -->
+            <!-- TÍTULO DINÁMICO DEL MENÚ LATERAL -->
+            <h4 class="text-center" id="sidebar-title"><i class="bi bi-hospital"></i> Clínica Sur</h4>
+            
+            <!-- CONTENEDOR DE ENLACES DINÁMICOS -->
+            <div class="mt-4" id="menu-links-container">
                 <a id="menu-agendar" onclick="cambiarVista('vista-agendar', this)" class="menu-link active"><i class="bi bi-calendar-plus me-2"></i> Agendar Cita</a>
                 <a id="menu-agenda" onclick="cambiarVista('vista-agenda', this)" class="menu-link"><i class="bi bi-list-check me-2"></i> Agenda Diaria</a>
                 <a id="menu-procedimientos" onclick="cambiarVista('vista-procedimientos', this)" class="menu-link"><i class="bi bi-file-medical me-2"></i> Procedimientos</a>
@@ -202,14 +224,15 @@
         </div>
 
         <div class="topbar d-flex justify-content-between align-items-center">
-            <!-- SE AGREGÓ EL ID topbar-title AQUÍ -->
-            <h5 id="topbar-title" class="m-0 fw-bold" style="color: var(--medical-sidebar);"><i class="bi bi-grid-1x2-fill text-primary me-2"></i> API Gateway - Orquestador (Grupo 2)</h5>
+            <!-- TÍTULO SUPERIOR DINÁMICO -->
+            <h5 id="topbar-title" class="m-0 fw-bold" style="color: var(--medical-primary);"><i class="bi bi-grid-1x2-fill text-primary me-2"></i> API Gateway - Orquestador (Grupo 2)</h5>
             <div>
-                <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 rounded-pill"><i class="bi bi-check-circle-fill me-1"></i> Nodos Conectados</span>
+                <span class="badge border px-3 py-2 rounded-pill shadow-sm" style="color: var(--medical-primary); background-color: var(--input-bg);"><i class="bi bi-person-circle me-1"></i> Sesión Activa</span>
             </div>
         </div>
 
         <div class="main-content">
+            <!-- VISTAS ORIGINALES (Para Administrador/Gateway) -->
             <div id="vista-agendar" class="view-section active">
                 <div class="card col-md-9 mx-auto">
                     <div class="card-header text-center">
@@ -221,13 +244,13 @@
                             <div class="row mb-4 g-4">
                                 <div class="col-md-6">
                                     <label class="form-label fw-bold"><i class="bi bi-person-badge me-1"></i> Seleccionar Paciente (G3)</label>
-                                    <select class="form-select bg-light" id="pacienteId" required>
+                                    <select class="form-select" id="pacienteId" required>
                                         <option value="">Cargando pacientes desde G3...</option>
                                     </select>
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label fw-bold"><i class="bi bi-heart-pulse me-1"></i> Seleccionar Doctor (G1)</label>
-                                    <select class="form-select bg-light" id="doctorId" onchange="verificarHorariosDoctor()" required>
+                                    <select class="form-select" id="doctorId" onchange="verificarHorariosDoctor()" required>
                                         <option value="">Cargando doctores desde G1...</option>
                                     </select>
                                 </div>
@@ -324,7 +347,7 @@
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label fw-bold"><i class="bi bi-person-check me-1"></i> Seleccionar Paciente</label>
-                                    <select class="form-select bg-light" id="procPacienteId" required>
+                                    <select class="form-select" id="procPacienteId" required>
                                         <option value="">Cargando pacientes desde G3...</option>
                                     </select>
                                 </div>
@@ -336,16 +359,59 @@
                             <div class="mb-4">
                                 <label class="form-label fw-bold"><i class="bi bi-cash me-1"></i> Costo Total (S/)</label>
                                 <div class="input-group">
-                                    <span class="input-group-text bg-light">S/</span>
-                                    <input type="number" step="0.01" class="form-control border-start-0" id="procCosto" required>
+                                    <span class="input-group-text bg-light border-0">S/</span>
+                                    <input type="number" step="0.01" class="form-control" id="procCosto" required>
                                 </div>
                             </div>
-                            <button type="submit" class="btn btn-success w-100 py-3 mt-2 fw-bold shadow-sm"><i class="bi bi-save me-1"></i> Guardar Procedimiento</button>
+                            <button type="submit" class="btn btn-primary w-100 py-3 mt-2 fw-bold shadow-sm"><i class="bi bi-save me-1"></i> Guardar Procedimiento</button>
                         </form>
                         <div id="mensajeProc" class="alert alert-success mt-4 d-none rounded-3"></div>
                     </div>
                 </div>
             </div>
+
+            <!-- ============================================== -->
+            <!-- NUEVO: PANEL EXCLUSIVO PARA DOCTORES (Consultas)-->
+            <!-- ============================================== -->
+            <div id="vista-panel-doctor" class="view-section">
+                <div class="card shadow-sm border-0">
+                    <div class="card-body p-5 text-center">
+                        <i class="bi bi-heart-pulse text-danger" style="font-size: 4rem;"></i>
+                        <h2 class="fw-bold mt-3" style="color: var(--medical-primary);">Bienvenido Doctor</h2>
+                        <p class="text-muted fs-5 mb-5">Desde aquí puede consultar sus pacientes agendados desde el Gateway Central.</p>
+                        
+                        <div class="bg-light p-4 rounded-4 border mx-auto" style="max-width: 600px;">
+                            <h5 class="fw-bold mb-3 text-start">Consultar mis turnos del día</h5>
+                            <div class="d-flex gap-2">
+                                <input type="date" id="docFechaFiltro" class="form-control" value="">
+                                <button onclick="alert('Llamada al endpoint del G1 conectando agenda...')" class="btn btn-primary px-4 fw-bold"><i class="bi bi-search me-2"></i> Buscar Citas</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============================================== -->
+            <!-- NUEVO: PANEL EXCLUSIVO PARA PACIENTES (Consultas)-->
+            <!-- ============================================== -->
+            <div id="vista-panel-paciente" class="view-section">
+                <div class="card shadow-sm border-0">
+                    <div class="card-body p-5 text-center">
+                        <i class="bi bi-person-check text-success" style="font-size: 4rem;"></i>
+                        <h2 class="fw-bold mt-3" style="color: var(--medical-primary);">Mi Portal de Salud</h2>
+                        <p class="text-muted fs-5 mb-5">Consulte su historial de atenciones y futuras citas clínicas.</p>
+                        
+                        <div class="bg-light p-4 rounded-4 border mx-auto" style="max-width: 600px;">
+                            <h5 class="fw-bold mb-3 text-start">Revisar mi expediente</h5>
+                            <div class="d-flex gap-2">
+                                <input type="text" class="form-control" placeholder="Ingrese su DNI" value="">
+                                <button onclick="alert('Llamada al endpoint del G3 extrayendo datos...')" class="btn btn-primary px-4 fw-bold"><i class="bi bi-folder2-open me-2"></i> Ver Historial</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
 
@@ -357,9 +423,9 @@
 
         // Revisar si ya tenemos un Token JWT guardado
         if (localStorage.getItem('token_clinica')) {
-    document.getElementById('login-overlay').setAttribute('style', 'display: none !important;');
-    adaptarMenuPorRol(); // <--- ¡AÑADIR ESTA LÍNEA AQUÍ!
-}
+            document.getElementById('login-overlay').setAttribute('style', 'display: none !important;');
+            adaptarMenuPorRol(); 
+        }
 
         // Utilidad para inyectar el Token en TODAS las peticiones hacia nuestro backend
         function getAuthHeaders() {
@@ -380,103 +446,101 @@
         }
 
        // --- RUTAS DE LOS MICROSERVICIOS ---
-const RUTAS_SERVIDORES = {
-    clinica: { 
-        base: "", 
-        login: "/clinica/login", 
-        verify: "/clinica/verificar-2fa" 
-    },
-    doctor: { 
-        base: "https://serviciodoctor.onrender.com", 
-        login: "/api/auth/login",           // <--- Actualizado según la captura
-        verify: "/api/auth/verificar-2fa"   // <--- Actualizado según la captura
-    },
-    paciente: { 
-        base: "https://backend-ecosalud.onrender.com", 
-        login: "/paciente/login",           // (Pendiente de que el G3 confirme)
-        verify: "/paciente/verificar-2fa"   // (Pendiente de que el G3 confirme)
-    }
-};
+        const RUTAS_SERVIDORES = {
+            clinica: { 
+                base: "", 
+                login: "/clinica/login", 
+                verify: "/clinica/verificar-2fa" 
+            },
+            doctor: { 
+                base: "https://serviciodoctor.onrender.com", 
+                login: "/api/auth/login",            
+                verify: "/api/auth/verificar-2fa"   
+            },
+            paciente: { 
+                base: "https://backend-ecosalud.onrender.com", 
+                login: "/paciente/login",            
+                verify: "/paciente/verificar-2fa"   
+            }
+        };
 
-let rolSeleccionadoTemporal = ""; // Para saber a dónde enviar el 2FA
+        let rolSeleccionadoTemporal = ""; // Para saber a dónde enviar el 2FA
 
-// --- AUTENTICACIÓN: FASE 1 (Login Universal) ---
-document.getElementById('formLogin').addEventListener('submit', async function(e) {
-    e.preventDefault();
-    const email = document.getElementById('loginUser').value;
-    const password = document.getElementById('loginPass').value;
-    const rol = document.getElementById('loginRole').value;
-    const errorDiv = document.getElementById('login-error');
+        // --- AUTENTICACIÓN: FASE 1 (Login Universal) ---
+        document.getElementById('formLogin').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const email = document.getElementById('loginUser').value;
+            const password = document.getElementById('loginPass').value;
+            const rol = document.getElementById('loginRole').value;
+            const errorDiv = document.getElementById('login-error');
 
-    // Determinamos a qué servidor disparar
-    const servidor = RUTAS_SERVIDORES[rol];
-    const urlDestino = servidor.base + servidor.login;
+            // Determinamos a qué servidor disparar
+            const servidor = RUTAS_SERVIDORES[rol];
+            const urlDestino = servidor.base + servidor.login;
 
-    try {
-        const response = await fetch(urlDestino, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password })
-        });
-        
-        const data = await response.json();
+            try {
+                const response = await fetch(urlDestino, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                const data = await response.json();
 
-        if (response.ok && data.requiere_2fa) {
-            emailTemporal = email;
-            rolSeleccionadoTemporal = rol; // Guardamos el rol para la Fase 2
-            
-            document.getElementById('fase-1-login').classList.add('d-none');
-            document.getElementById('fase-2-2fa').classList.remove('d-none');
-            errorDiv.classList.add('d-none');
-        } else {
-            document.getElementById('error-text').innerText = data.detail || "Credenciales incorrectas en el servidor de " + rol;
-            errorDiv.classList.remove('d-none');
-            setTimeout(() => errorDiv.classList.add('d-none'), 3000);
-        }
-    } catch (err) {
-        alert("Error de conexión con el servidor de " + rol);
-    }
-});
-
-// --- AUTENTICACIÓN: FASE 2 (Verificación 2FA Universal) ---
-document.getElementById('form2FA').addEventListener('submit', async function(e) {
-    e.preventDefault();
-    const codigo_2fa = document.getElementById('codigo2FA').value;
-    const errorDiv = document.getElementById('login-error');
-
-    // Recuperamos a qué servidor le toca verificar el token
-    const servidor = RUTAS_SERVIDORES[rolSeleccionadoTemporal];
-    const urlDestino = servidor.base + servidor.verify;
-
-    try {
-        const response = await fetch(urlDestino, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: emailTemporal, codigo_2fa: codigo_2fa })
+                if (response.ok && data.requiere_2fa) {
+                    emailTemporal = email;
+                    rolSeleccionadoTemporal = rol; // Guardamos el rol para la Fase 2
+                    
+                    document.getElementById('fase-1-login').classList.add('d-none');
+                    document.getElementById('fase-2-2fa').classList.remove('d-none');
+                    errorDiv.classList.add('d-none');
+                } else {
+                    document.getElementById('error-text').innerText = data.detail || "Credenciales incorrectas en el servidor de " + rol;
+                    errorDiv.classList.remove('d-none');
+                    setTimeout(() => errorDiv.classList.add('d-none'), 3000);
+                }
+            } catch (err) {
+                alert("Error de conexión con el servidor de " + rol);
+            }
         });
 
-        const data = await response.json();
+        // --- AUTENTICACIÓN: FASE 2 (Verificación 2FA Universal) ---
+        document.getElementById('form2FA').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const codigo_2fa = document.getElementById('codigo2FA').value;
+            const errorDiv = document.getElementById('login-error');
 
-        if (response.ok && data.access_token) {
-            // Guardamos el token y el rol de quien inició sesión
-            localStorage.setItem('token_clinica', data.access_token);
-            localStorage.setItem('rol_actual', rolSeleccionadoTemporal);
-            
-            document.getElementById('login-overlay').setAttribute('style', 'display: none !important;');
-            
-            // Aquí puedes agregar lógica para ocultar menús según el rol
-            // if(rolSeleccionadoTemporal === 'doctor') { document.getElementById('menu-agendar').style.display = 'none'; }
-            adaptarMenuPorRol(); 
-            cargarDoctores(); 
-        } else {
-            document.getElementById('error-text').innerText = data.detail || "Código incorrecto";
-            errorDiv.classList.remove('d-none');
-            setTimeout(() => errorDiv.classList.add('d-none'), 3000);
-        }
-    } catch (err) {
-        alert("Error al verificar el código con el servidor de " + rolSeleccionadoTemporal);
-    }
-});
+            // Recuperamos a qué servidor le toca verificar el token
+            const servidor = RUTAS_SERVIDORES[rolSeleccionadoTemporal];
+            const urlDestino = servidor.base + servidor.verify;
+
+            try {
+                const response = await fetch(urlDestino, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: emailTemporal, codigo_2fa: codigo_2fa })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.access_token) {
+                    // Guardamos el token y el rol de quien inició sesión
+                    localStorage.setItem('token_clinica', data.access_token);
+                    localStorage.setItem('rol_actual', rolSeleccionadoTemporal);
+                    
+                    document.getElementById('login-overlay').setAttribute('style', 'display: none !important;');
+                    
+                    adaptarMenuPorRol(); 
+                    cargarDoctores(); 
+                } else {
+                    document.getElementById('error-text').innerText = data.detail || "Código incorrecto";
+                    errorDiv.classList.remove('d-none');
+                    setTimeout(() => errorDiv.classList.add('d-none'), 3000);
+                }
+            } catch (err) {
+                alert("Error al verificar el código con el servidor de " + rolSeleccionadoTemporal);
+            }
+        });
 
         // Función para el botón "Volver atrás" en la pantalla de 2FA
         function volverAlLogin() {
@@ -496,48 +560,43 @@ document.getElementById('form2FA').addEventListener('submit', async function(e) 
         // Control de Vistas (Navegación Lateral)
         function cambiarVista(idVista, elemento) {
             document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
-            document.querySelectorAll('.menu-link').forEach(el => el.classList.remove('active', 'bg-primary'));
+            document.querySelectorAll('.menu-link').forEach(el => el.classList.remove('active'));
             document.getElementById(idVista).classList.add('active');
-            elemento.classList.add('active', 'bg-primary');
+            elemento.classList.add('active');
         }
+
         // ==========================================
-        // GESTOR DE ROLES DINÁMICO
+        // GESTOR DE ROLES DINÁMICO (ACTUALIZADO)
         // ==========================================
         function adaptarMenuPorRol() {
             const rolActual = localStorage.getItem('rol_actual');
-            const menuAgendar = document.getElementById('menu-agendar');
-            const menuAgenda = document.getElementById('menu-agenda');
-            const menuProcedimientos = document.getElementById('menu-procedimientos');
+            const menuContainer = document.getElementById('menu-links-container');
+            const sidebarTitle = document.getElementById('sidebar-title');
             const topbarTitle = document.getElementById('topbar-title');
 
             if (rolActual === 'doctor') {
-                // Un doctor no debe agendar citas ni cobrar procedimientos
-                menuAgendar.classList.add('d-none');
-                menuProcedimientos.classList.add('d-none');
+                sidebarTitle.innerHTML = '<i class="bi bi-heart-pulse"></i> Panel Médico';
+                topbarTitle.innerHTML = '<i class="bi bi-heart-pulse-fill me-2"></i> Consultas Médicas (G1)';
                 
-                // Cambiamos los textos para que se sienta personalizado
-                menuAgenda.innerHTML = '<i class="bi bi-calendar2-check me-2"></i> Mi Agenda Médica';
-                topbarTitle.innerHTML = '<i class="bi bi-heart-pulse-fill text-danger me-2"></i> Portal del Médico (G1)';
-                
-                // Forzamos la vista de la agenda
-                cambiarVista('vista-agenda', menuAgenda);
+                // DESTRUYE EL MENÚ DE CLÍNICA Y PONE EL DE DOCTOR
+                menuContainer.innerHTML = `<a onclick="cambiarVista('vista-panel-doctor', this)" class="menu-link active"><i class="bi bi-search me-2"></i> Mis Consultas</a>`;
+                cambiarVista('vista-panel-doctor', menuContainer.firstElementChild);
 
             } else if (rolActual === 'paciente') {
-                // Un paciente no registra procedimientos
-                menuProcedimientos.classList.add('d-none');
+                sidebarTitle.innerHTML = '<i class="bi bi-person-badge"></i> Mi Perfil';
+                topbarTitle.innerHTML = '<i class="bi bi-person-badge-fill me-2"></i> Consultas Paciente (G3)';
                 
-                // Cambiamos textos
-                menuAgenda.innerHTML = '<i class="bi bi-clock-history me-2"></i> Mi Historial de Citas';
-                topbarTitle.innerHTML = '<i class="bi bi-person-badge-fill text-success me-2"></i> Portal del Paciente (G3)';
-                
-                // Forzamos la vista de agendar
-                cambiarVista('vista-agendar', menuAgendar);
-                
+                // DESTRUYE EL MENÚ DE CLÍNICA Y PONE EL DE PACIENTE
+                menuContainer.innerHTML = `<a onclick="cambiarVista('vista-panel-paciente', this)" class="menu-link active"><i class="bi bi-file-earmark-medical me-2"></i> Mis Exámenes y Citas</a>`;
+                cambiarVista('vista-panel-paciente', menuContainer.firstElementChild);
+
             } else {
-                // Si es Clínica (Admin), ve absolutamente todo por defecto
+                // Si es Clínica (Admin), se mantiene el menú original
                 topbarTitle.innerHTML = '<i class="bi bi-grid-1x2-fill text-primary me-2"></i> API Gateway - Orquestador (G2)';
+                cambiarVista('vista-agendar', menuContainer.firstElementChild);
             }
         }
+
         // ==========================================
         // CARGAS INICIALES DESDE MICROSERVICIOS
         // ==========================================
@@ -637,7 +696,7 @@ document.getElementById('form2FA').addEventListener('submit', async function(e) 
                 msj.innerHTML = `<i class="bi bi-check-circle-fill"></i> ¡Cita orquestada con éxito! ID asignado: ${data.id}.`;
                 this.reset(); 
                 verificarHorariosDoctor();
-                cargarTodasLasCitasParaBuscador(); // Refrescar el buscador
+                if (typeof cargarTodasLasCitasParaBuscador === "function") cargarTodasLasCitasParaBuscador(); // Refrescar el buscador
             } else {
                 const errorData = await response.json();
                 msj.classList.add('alert-danger');
@@ -657,7 +716,13 @@ document.getElementById('form2FA').addEventListener('submit', async function(e) 
             const tbody = document.getElementById('tablaAgenda');
             tbody.innerHTML = "";
             if(citas.length === 0) { tbody.innerHTML = "<tr><td colspan='7' class='text-center text-muted'>No hay citas registradas.</td></tr>"; return; }
-            citas.forEach(cita => { tbody.innerHTML += construirFilaTabla(cita); });
+            citas.forEach(cita => { 
+                if (typeof construirFilaTabla === "function") {
+                    tbody.innerHTML += construirFilaTabla(cita); 
+                } else {
+                    tbody.innerHTML += `<tr><td colspan='7'>Fila generada (Falta función construirFilaTabla en el script)</td></tr>`;
+                }
+            });
         }
 
         // --- ENDPOINT POST: PROCEDIMIENTO (Requiere Token) ---
@@ -685,7 +750,7 @@ document.getElementById('form2FA').addEventListener('submit', async function(e) 
                 msj.className = 'alert alert-success mt-3'; 
                 msj.textContent = `Procedimiento registrado exitosamente con ID: ${data.id}.`; 
                 this.reset();
-                if(buscadorCitasInstancia) buscadorCitasInstancia.clear(); // Limpia el buscador visualmente
+                if(typeof buscadorCitasInstancia !== 'undefined') buscadorCitasInstancia.clear(); // Limpia el buscador visualmente
             }
             else { msj.className = 'alert alert-danger mt-3'; msj.textContent = "Error al guardar el procedimiento."; }
         });
@@ -702,7 +767,13 @@ document.getElementById('form2FA').addEventListener('submit', async function(e) 
             const tbody = document.getElementById('tablaAgenda');
             tbody.innerHTML = "";
             if(citas.length === 0) { tbody.innerHTML = "<tr><td colspan='7' class='text-center text-muted'>No hay citas para este doctor.</td></tr>"; return; }
-            citas.forEach(cita => { tbody.innerHTML += construirFilaTabla(cita); });
+            citas.forEach(cita => { 
+                if (typeof construirFilaTabla === "function") {
+                    tbody.innerHTML += construirFilaTabla(cita); 
+                } else {
+                    tbody.innerHTML += `<tr><td colspan='7'>Fila generada (Falta función construirFilaTabla en el script)</td></tr>`;
+                }
+            });
         }
     </script>
 </body>
