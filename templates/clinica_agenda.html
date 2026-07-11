@@ -418,24 +418,22 @@
     <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
 
     <script>
-        // Utilidad global para recordar el email entre el paso 1 y 2 de la autenticación
+        // ==========================================
+        // VARIABLES GLOBALES (Añadido mfaTokenTemporal)
+        // ==========================================
         let emailTemporal = "";
+        let rolSeleccionadoTemporal = "";
+        let mfaTokenTemporal = ""; // Especial para el Grupo 3
 
-        // Revisar si ya tenemos un Token JWT guardado
         if (localStorage.getItem('token_clinica')) {
             document.getElementById('login-overlay').setAttribute('style', 'display: none !important;');
             adaptarMenuPorRol(); 
         }
 
-        // Utilidad para inyectar el Token en TODAS las peticiones hacia nuestro backend
         function getAuthHeaders() {
-            return {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('token_clinica')}`
-            };
+            return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token_clinica')}` };
         }
 
-        // Manejador central de errores de sesión (Para cuando expira el token de 2 horas)
         function manejarErrorSesion(response) {
             if (response.status === 401 || response.status === 403) {
                 alert("Tu sesión ha expirado o es inválida. Por favor, inicia sesión de nuevo.");
@@ -445,7 +443,9 @@
             return false;
         }
 
-       // --- RUTAS DE LOS MICROSERVICIOS ---
+        // ==========================================
+        // RUTAS DEFINITIVAS DE LOS MICROSERVICIOS
+        // ==========================================
         const RUTAS_SERVIDORES = {
             clinica: { 
                 base: "", 
@@ -453,20 +453,20 @@
                 verify: "/clinica/verificar-2fa" 
             },
             doctor: { 
-                base: "https://serviciodoctor.onrender.com", 
-                login: "/api/auth/login",            
-                verify: "/api/auth/verificar-2fa"   
+                base: "https://servicio-doctor-soa.onrender.com", 
+                login: "/login",            
+                verify: "/verificar-2fa"   
             },
             paciente: { 
                 base: "https://backend-ecosalud.onrender.com", 
                 login: "/paciente/login",            
-                verify: "/paciente/verificar-2fa"   
+                verify: "/paciente/verify-mfa" // Ruta confirmada del G3  
             }
         };
 
-        let rolSeleccionadoTemporal = ""; // Para saber a dónde enviar el 2FA
-
-        // --- AUTENTICACIÓN: FASE 1 (Login Universal) ---
+        // ==========================================
+        // FASE 1: LOGIN MULTI-SISTEMA
+        // ==========================================
         document.getElementById('formLogin').addEventListener('submit', async function(e) {
             e.preventDefault();
             const email = document.getElementById('loginUser').value;
@@ -474,12 +474,10 @@
             const rol = document.getElementById('loginRole').value;
             const errorDiv = document.getElementById('login-error');
 
-            // Determinamos a qué servidor disparar
             const servidor = RUTAS_SERVIDORES[rol];
-            const urlDestino = servidor.base + servidor.login;
 
             try {
-                const response = await fetch(urlDestino, {
+                const response = await fetch(servidor.base + servidor.login, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email, password })
@@ -487,44 +485,68 @@
                 
                 const data = await response.json();
 
-                if (response.ok && data.requiere_2fa) {
+                // Verificamos si la respuesta es exitosa (Ya no exigimos data.requiere_2fa porque G3 no lo manda)
+                if (response.ok) {
                     emailTemporal = email;
-                    rolSeleccionadoTemporal = rol; // Guardamos el rol para la Fase 2
+                    rolSeleccionadoTemporal = rol; 
+                    
+                    // LÓGICA ESPECIAL POR ROLES PARA LA PANTALLA DE 2FA
+                    if (rol === 'paciente') {
+                        mfaTokenTemporal = data.mfa_token; // Atrapamos el token de G3
+                        document.querySelector('#fase-2-2fa p').innerText = "Ingresa el código que te enviamos a tu correo electrónico.";
+                    } else {
+                        document.querySelector('#fase-2-2fa p').innerText = "Ingresa el código de 6 dígitos de tu aplicación autenticadora (Google Authenticator).";
+                    }
                     
                     document.getElementById('fase-1-login').classList.add('d-none');
                     document.getElementById('fase-2-2fa').classList.remove('d-none');
                     errorDiv.classList.add('d-none');
                 } else {
-                    document.getElementById('error-text').innerText = data.detail || "Credenciales incorrectas en el servidor de " + rol;
+                    // Mostrar el error exacto que devuelva el microservicio
+                    document.getElementById('error-text').innerText = data.detail || data.message || "Credenciales incorrectas en el nodo " + rol;
                     errorDiv.classList.remove('d-none');
                     setTimeout(() => errorDiv.classList.add('d-none'), 3000);
                 }
             } catch (err) {
-                alert("Error de conexión con el servidor de " + rol);
+                alert("Error de red conectando con el servidor de " + rol);
             }
         });
 
-        // --- AUTENTICACIÓN: FASE 2 (Verificación 2FA Universal) ---
+        // ==========================================
+        // FASE 2: VERIFICACIÓN MULTI-SISTEMA
+        // ==========================================
         document.getElementById('form2FA').addEventListener('submit', async function(e) {
             e.preventDefault();
             const codigo_2fa = document.getElementById('codigo2FA').value;
             const errorDiv = document.getElementById('login-error');
-
-            // Recuperamos a qué servidor le toca verificar el token
             const servidor = RUTAS_SERVIDORES[rolSeleccionadoTemporal];
-            const urlDestino = servidor.base + servidor.verify;
+
+            // CONSTRUIMOS EL PAYLOAD DEPENDIENDO DEL CONTRATO DEL GRUPO
+            let payloadEnvio = {};
+            if (rolSeleccionadoTemporal === 'paciente') {
+                // Formato exigido por el Grupo 3
+                payloadEnvio = { 
+                    mfa_token: mfaTokenTemporal, 
+                    code: codigo_2fa // G3 usa 'code'
+                };
+            } else {
+                // Formato exigido por Grupo 2 (Nosotros) y Grupo 1 (Doctor)
+                payloadEnvio = { 
+                    email: emailTemporal, 
+                    codigo_2fa: codigo_2fa 
+                };
+            }
 
             try {
-                const response = await fetch(urlDestino, {
+                const response = await fetch(servidor.base + servidor.verify, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: emailTemporal, codigo_2fa: codigo_2fa })
+                    body: JSON.stringify(payloadEnvio)
                 });
 
                 const data = await response.json();
 
                 if (response.ok && data.access_token) {
-                    // Guardamos el token y el rol de quien inició sesión
                     localStorage.setItem('token_clinica', data.access_token);
                     localStorage.setItem('rol_actual', rolSeleccionadoTemporal);
                     
@@ -533,16 +555,18 @@
                     adaptarMenuPorRol(); 
                     cargarDoctores(); 
                 } else {
-                    document.getElementById('error-text').innerText = data.detail || "Código incorrecto";
+                    document.getElementById('error-text').innerText = data.detail || data.message || "Código incorrecto";
                     errorDiv.classList.remove('d-none');
                     setTimeout(() => errorDiv.classList.add('d-none'), 3000);
                 }
             } catch (err) {
-                alert("Error al verificar el código con el servidor de " + rolSeleccionadoTemporal);
+                alert("Error de red al verificar el código en el nodo " + rolSeleccionadoTemporal);
             }
         });
 
-        // Función para el botón "Volver atrás" en la pantalla de 2FA
+        // ==========================================
+        // NAVEGACIÓN Y CIERRE DE SESIÓN
+        // ==========================================
         function volverAlLogin() {
             document.getElementById('fase-2-2fa').classList.add('d-none');
             document.getElementById('fase-1-login').classList.remove('d-none');
@@ -551,22 +575,21 @@
             document.getElementById('loginPass').value = '';
         }
 
-        // Destruir el Token para salir
         function cerrarSesion() {
             localStorage.removeItem('token_clinica');
+            localStorage.removeItem('rol_actual');
             location.reload();
         }
 
-        // Control de Vistas (Navegación Lateral)
         function cambiarVista(idVista, elemento) {
             document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.menu-link').forEach(el => el.classList.remove('active'));
             document.getElementById(idVista).classList.add('active');
-            elemento.classList.add('active');
+            if(elemento) elemento.classList.add('active');
         }
 
         // ==========================================
-        // GESTOR DE ROLES DINÁMICO (ACTUALIZADO)
+        // GESTOR DE ROLES DINÁMICO
         // ==========================================
         function adaptarMenuPorRol() {
             const rolActual = localStorage.getItem('rol_actual');
@@ -577,22 +600,25 @@
             if (rolActual === 'doctor') {
                 sidebarTitle.innerHTML = '<i class="bi bi-heart-pulse"></i> Panel Médico';
                 topbarTitle.innerHTML = '<i class="bi bi-heart-pulse-fill me-2"></i> Consultas Médicas (G1)';
-                
-                // DESTRUYE EL MENÚ DE CLÍNICA Y PONE EL DE DOCTOR
                 menuContainer.innerHTML = `<a onclick="cambiarVista('vista-panel-doctor', this)" class="menu-link active"><i class="bi bi-search me-2"></i> Mis Consultas</a>`;
                 cambiarVista('vista-panel-doctor', menuContainer.firstElementChild);
 
             } else if (rolActual === 'paciente') {
                 sidebarTitle.innerHTML = '<i class="bi bi-person-badge"></i> Mi Perfil';
                 topbarTitle.innerHTML = '<i class="bi bi-person-badge-fill me-2"></i> Consultas Paciente (G3)';
-                
-                // DESTRUYE EL MENÚ DE CLÍNICA Y PONE EL DE PACIENTE
                 menuContainer.innerHTML = `<a onclick="cambiarVista('vista-panel-paciente', this)" class="menu-link active"><i class="bi bi-file-earmark-medical me-2"></i> Mis Exámenes y Citas</a>`;
                 cambiarVista('vista-panel-paciente', menuContainer.firstElementChild);
 
             } else {
-                // Si es Clínica (Admin), se mantiene el menú original
                 topbarTitle.innerHTML = '<i class="bi bi-grid-1x2-fill text-primary me-2"></i> API Gateway - Orquestador (G2)';
+                // Restaurar el menú original si recarga la página como admin
+                if(!menuContainer.innerHTML.includes('vista-agendar')) {
+                    menuContainer.innerHTML = `
+                        <a id="menu-agendar" onclick="cambiarVista('vista-agendar', this)" class="menu-link active"><i class="bi bi-calendar-plus me-2"></i> Agendar Cita</a>
+                        <a id="menu-agenda" onclick="cambiarVista('vista-agenda', this)" class="menu-link"><i class="bi bi-list-check me-2"></i> Agenda Diaria</a>
+                        <a id="menu-procedimientos" onclick="cambiarVista('vista-procedimientos', this)" class="menu-link"><i class="bi bi-file-medical me-2"></i> Procedimientos</a>
+                    `;
+                }
                 cambiarVista('vista-agendar', menuContainer.firstElementChild);
             }
         }
@@ -601,21 +627,20 @@
         // CARGAS INICIALES DESDE MICROSERVICIOS
         // ==========================================
         async function cargarDoctores() {
-            if (!localStorage.getItem('token_clinica')) return; // No cargar si no hay sesión
+            if (!localStorage.getItem('token_clinica')) return; 
             
             const selectDoctor = document.getElementById('doctorId');
             const selectDoctorBusqueda = document.getElementById('doctorBusqueda');
             try {
-                // NOTA: Esta petición va a otro servidor externo, no necesita nuestro JWT local
-                const res = await fetch('https://serviciodoctor.onrender.com/doctores?activo=true');
+                const res = await fetch('https://servicio-doctor-soa.onrender.com/doctores?activo=true');
                 if (res.ok) {
                     const doctores = await res.json();
                     let opcionesHTML = '<option value="">Seleccione un doctor...</option>';
                     doctores.forEach(doc => {
                         opcionesHTML += `<option value="${doc.id}">Dr. ${doc.nombres} ${doc.apellidos} - ${doc.especialidad}</option>`;
                     });
-                    selectDoctor.innerHTML = opcionesHTML;
-                    selectDoctorBusqueda.innerHTML = '<option value="">Filtre por doctor...</option>' + opcionesHTML.replace('<option value="">Seleccione un doctor...</option>', '');
+                    if(selectDoctor) selectDoctor.innerHTML = opcionesHTML;
+                    if(selectDoctorBusqueda) selectDoctorBusqueda.innerHTML = '<option value="">Filtre por doctor...</option>' + opcionesHTML.replace('<option value="">Seleccione un doctor...</option>', '');
                 }
             } catch (err) { console.error("Error al cargar doctores"); }
         }
@@ -632,12 +657,18 @@
                         const nombreFinal = pac.nombres ? `${pac.nombres} ${pac.apellidos}` : (pac.nombre || `Paciente ID: ${pac.id}`);
                         opcionesHTML += `<option value="${pac.id}">${nombreFinal}</option>`;
                     });
-                    selectPacienteCita.innerHTML = opcionesHTML;
-                    selectPacienteProc.innerHTML = opcionesHTML;
+                    if(selectPacienteCita) selectPacienteCita.innerHTML = opcionesHTML;
+                    if(selectPacienteProc) selectPacienteProc.innerHTML = opcionesHTML;
                 }
             } catch (err) { console.error("Error al cargar pacientes"); }
         }
-        document.addEventListener("DOMContentLoaded", cargarDoctores);
+        
+        document.addEventListener("DOMContentLoaded", function() {
+            if (localStorage.getItem('token_clinica')) {
+                cargarDoctores();
+                cargarPacientes();
+            }
+        });
 
         // --- ENDPOINT: DISPONIBILIDAD DE DOCTOR (Requiere Token) ---
         async function verificarHorariosDoctor() {
@@ -647,7 +678,6 @@
             if (!doctorId) { contenedor.classList.add('d-none'); return; }
 
             try {
-                // INYECTAMOS LOS HEADERS JWT AQUÍ
                 const response = await fetch(`/clinica/citas/doctor/${doctorId}`, { headers: getAuthHeaders() });
                 if (manejarErrorSesion(response)) return;
 
@@ -672,15 +702,18 @@
         }
 
         // --- ENDPOINT POST: GUARDAR CITA (Requiere Token) ---
-        document.getElementById('formCita').addEventListener('submit', async function(e) {
+        document.getElementById('formCita')?.addEventListener('submit', async function(e) {
             e.preventDefault();
             const payload = {
-                clinica_id: 1, sede_id: parseInt(document.getElementById('sedeId').value),
-                paciente_id: parseInt(document.getElementById('pacienteId').value), doctor_id: parseInt(document.getElementById('doctorId').value),
-                fecha_hora: document.getElementById('fechaHora').value + ":00", duracion_minutos: 30, motivo: document.getElementById('motivo').value
+                clinica_id: 1, 
+                sede_id: parseInt(document.getElementById('sedeId').value),
+                paciente_id: parseInt(document.getElementById('pacienteId').value), 
+                doctor_id: parseInt(document.getElementById('doctorId').value),
+                fecha_hora: document.getElementById('fechaHora').value + ":00", 
+                duracion_minutos: 30, 
+                motivo: document.getElementById('motivo').value
             };
 
-            // INYECTAMOS LOS HEADERS JWT EN EL POST
             const response = await fetch('/clinica/cita', {
                 method: 'POST',
                 headers: getAuthHeaders(),
@@ -696,7 +729,6 @@
                 msj.innerHTML = `<i class="bi bi-check-circle-fill"></i> ¡Cita orquestada con éxito! ID asignado: ${data.id}.`;
                 this.reset(); 
                 verificarHorariosDoctor();
-                if (typeof cargarTodasLasCitasParaBuscador === "function") cargarTodasLasCitasParaBuscador(); // Refrescar el buscador
             } else {
                 const errorData = await response.json();
                 msj.classList.add('alert-danger');
@@ -717,16 +749,12 @@
             tbody.innerHTML = "";
             if(citas.length === 0) { tbody.innerHTML = "<tr><td colspan='7' class='text-center text-muted'>No hay citas registradas.</td></tr>"; return; }
             citas.forEach(cita => { 
-                if (typeof construirFilaTabla === "function") {
-                    tbody.innerHTML += construirFilaTabla(cita); 
-                } else {
-                    tbody.innerHTML += `<tr><td colspan='7'>Fila generada (Falta función construirFilaTabla en el script)</td></tr>`;
-                }
+                if (typeof construirFilaTabla === "function") tbody.innerHTML += construirFilaTabla(cita); 
             });
         }
 
         // --- ENDPOINT POST: PROCEDIMIENTO (Requiere Token) ---
-        document.getElementById('formProcedimiento').addEventListener('submit', async function(e) {
+        document.getElementById('formProcedimiento')?.addEventListener('submit', async function(e) {
             e.preventDefault();
             const payload = {
                 cita_id: parseInt(document.getElementById('procCitaId').value),
@@ -750,7 +778,6 @@
                 msj.className = 'alert alert-success mt-3'; 
                 msj.textContent = `Procedimiento registrado exitosamente con ID: ${data.id}.`; 
                 this.reset();
-                if(typeof buscadorCitasInstancia !== 'undefined') buscadorCitasInstancia.clear(); // Limpia el buscador visualmente
             }
             else { msj.className = 'alert alert-danger mt-3'; msj.textContent = "Error al guardar el procedimiento."; }
         });
@@ -768,11 +795,7 @@
             tbody.innerHTML = "";
             if(citas.length === 0) { tbody.innerHTML = "<tr><td colspan='7' class='text-center text-muted'>No hay citas para este doctor.</td></tr>"; return; }
             citas.forEach(cita => { 
-                if (typeof construirFilaTabla === "function") {
-                    tbody.innerHTML += construirFilaTabla(cita); 
-                } else {
-                    tbody.innerHTML += `<tr><td colspan='7'>Fila generada (Falta función construirFilaTabla en el script)</td></tr>`;
-                }
+                if (typeof construirFilaTabla === "function") tbody.innerHTML += construirFilaTabla(cita); 
             });
         }
     </script>
