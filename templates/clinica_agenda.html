@@ -435,33 +435,47 @@
         }
 
        async function cargarCitas() {
-            const selectCitaProc = document.getElementById('procCitaId');
-            if (!selectCitaProc) return;
+    const selectCitaProc = document.getElementById('procCitaId');
+    if (!selectCitaProc) return;
 
-            try {
-                const res = await fetch('/clinica/citas', { headers: getAuthHeaders() });
-                // Eliminamos manejarErrorSesion(res) de aquí para que no te bote agresivamente
+    // --- NUEVO BLINDAJE ---
+    const token = localStorage.getItem('token_clinica');
+    if (!token) {
+        console.warn("No hay token, abortando carga de citas para evitar error 401.");
+        selectCitaProc.innerHTML = '<option value="">Inicie sesión para cargar citas...</option>';
+        return;
+    }
+    // ----------------------
 
-                if (res.ok) {
-                    const citas = await res.json();
-                    let opcionesHTML = '<option value="">Seleccione una cita...</option>';
-                    
-                    citas.reverse().forEach(cita => {
-                        const fechaObj = new Date(cita.fecha_hora);
-                        const fechaFormateada = fechaObj.toLocaleString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-                        opcionesHTML += `<option value="${cita.id}">Cita #${cita.id} - ${fechaFormateada} (Paciente: ${cita.paciente_id})</option>`;
-                    });
-                    
-                    selectCitaProc.innerHTML = opcionesHTML;
-                } else {
-                    selectCitaProc.innerHTML = '<option value="">Error al cargar citas</option>';
-                }
-            } catch (err) { 
-                console.error("Error al cargar citas", err);
-                selectCitaProc.innerHTML = '<option value="">Error de conexión</option>';
-            }
+    try {
+        const res = await fetch('/clinica/citas', { 
+            headers: { 
+                'Content-Type': 'application/json', 
+                'Authorization': `Bearer ${token}` 
+            } 
+        });
+
+        if (res.ok) {
+            const citas = await res.json();
+            let opcionesHTML = '<option value="">Seleccione una cita...</option>';
+            
+            citas.reverse().forEach(cita => {
+                const fechaObj = new Date(cita.fecha_hora);
+                const fechaFormateada = fechaObj.toLocaleString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+                opcionesHTML += `<option value="${cita.id}">Cita #${cita.id} - ${fechaFormateada} (Paciente: ${cita.paciente_id})</option>`;
+            });
+            
+            selectCitaProc.innerHTML = opcionesHTML;
+        } else if (res.status === 401) {
+            selectCitaProc.innerHTML = '<option value="">Sesión expirada</option>';
+        } else {
+            selectCitaProc.innerHTML = '<option value="">Error al cargar citas</option>';
         }
-
+    } catch (err) { 
+        console.error("Error al cargar citas", err);
+        selectCitaProc.innerHTML = '<option value="">Error de conexión</option>';
+    }
+}
         // ==========================================
         // RUTAS DEFINITIVAS DE LOS MICROSERVICIOS
         // ==========================================
