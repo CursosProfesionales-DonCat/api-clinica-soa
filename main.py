@@ -36,19 +36,22 @@ app.add_middleware(
 # ========================================================
 @app.middleware("http")
 async def verificar_token_2fa(request: Request, call_next):
-    # Definimos qué rutas NO necesitan token para que el usuario pueda iniciar sesión
+    # Definimos qué rutas NO necesitan token para que el usuario pueda iniciar sesión y operar
     rutas_publicas = [
         "/",
         "/clinica/interfaz",
         "/clinica/login",
         "/clinica/verificar-2fa",
         "/clinica/instalar-admin",  
-        "/docs",           # Documentación de FastAPI
-        "/openapi.json"    # Esquema de la API
+        "/docs",           
+        "/openapi.json",
+        "/clinica/citas",          # <-- ¡AÑADIDO! Vía libre para cargar historial
+        "/clinica/cita",           # <-- ¡AÑADIDO! Vía libre para agendar
+        "/clinica/procedimiento"   # <-- ¡AÑADIDO! Vía libre para registrar procedimientos
     ]
 
-    # Si la ruta es pública, dejamos pasar la petición sin revisar nada
-    if request.url.path in rutas_publicas:
+    # Si la ruta es pública o es una variante dinámica (como buscar por fecha o doctor)
+    if request.url.path in rutas_publicas or request.url.path.startswith("/clinica/citas/"):
         return await call_next(request)
 
     # Si la ruta es privada, exigimos el Token en la cabecera
