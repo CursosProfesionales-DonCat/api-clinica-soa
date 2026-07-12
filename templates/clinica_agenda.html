@@ -434,13 +434,32 @@
             return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token_clinica')}` };
         }
 
-        function manejarErrorSesion(response) {
-            if (response.status === 401 || response.status === 403) {
-                alert("Tu sesión ha expirado o es inválida. Por favor, inicia sesión de nuevo.");
-                cerrarSesion();
-                return true;
+       async function cargarCitas() {
+            const selectCitaProc = document.getElementById('procCitaId');
+            if (!selectCitaProc) return;
+
+            try {
+                const res = await fetch('/clinica/citas', { headers: getAuthHeaders() });
+                // Eliminamos manejarErrorSesion(res) de aquí para que no te bote agresivamente
+
+                if (res.ok) {
+                    const citas = await res.json();
+                    let opcionesHTML = '<option value="">Seleccione una cita...</option>';
+                    
+                    citas.reverse().forEach(cita => {
+                        const fechaObj = new Date(cita.fecha_hora);
+                        const fechaFormateada = fechaObj.toLocaleString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+                        opcionesHTML += `<option value="${cita.id}">Cita #${cita.id} - ${fechaFormateada} (Paciente: ${cita.paciente_id})</option>`;
+                    });
+                    
+                    selectCitaProc.innerHTML = opcionesHTML;
+                } else {
+                    selectCitaProc.innerHTML = '<option value="">Error al cargar citas</option>';
+                }
+            } catch (err) { 
+                console.error("Error al cargar citas", err);
+                selectCitaProc.innerHTML = '<option value="">Error de conexión</option>';
             }
-            return false;
         }
 
         // ==========================================
@@ -546,16 +565,20 @@
 
                 const data = await response.json();
 
-               if (response.ok && data.access_token) {
+              if (response.ok && data.access_token) {
                     localStorage.setItem('token_clinica', data.access_token);
                     localStorage.setItem('rol_actual', rolSeleccionadoTemporal);
                     
                     document.getElementById('login-overlay').setAttribute('style', 'display: none !important;');
                     
                     adaptarMenuPorRol(); 
-                    cargarDoctores(); 
-                    cargarPacientes(); // <-- ¡Faltaba llamar a los pacientes del G3!
-                    cargarCitas();     // <-- Y faltaba cargar el histórico de citas
+                    
+                    // ¡CORRECCIÓN AQUÍ! Solo el admin carga la data en segundo plano
+                    if (rolSeleccionadoTemporal === 'clinica') {
+                        cargarDoctores(); 
+                        cargarPacientes(); 
+                        cargarCitas();
+                    }
                 } else {
                     document.getElementById('error-text').innerText = data.detail || data.message || "Código incorrecto";
                     errorDiv.classList.remove('d-none');
@@ -680,9 +703,12 @@
         
         document.addEventListener("DOMContentLoaded", function() {
             if (localStorage.getItem('token_clinica')) {
-                cargarDoctores();
-                cargarPacientes();
-                cargarCitas(); 
+                // Solo cargar datos si eres el administrador
+                if (localStorage.getItem('rol_actual') === 'clinica') {
+                    cargarDoctores();
+                    cargarPacientes();
+                    cargarCitas(); 
+                }
             }
         });
 
