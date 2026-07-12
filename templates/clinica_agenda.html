@@ -711,8 +711,49 @@
             }
         });
 
-    
-        // --- ENDPOINT POST: GUARDAR CITA (Requiere Token) ---
+    // ==========================================
+        // FUNCIONES AUXILIARES PARA DIBUJAR LA TABLA
+        // ==========================================
+        function construirFilaTabla(cita) {
+            const fechaObj = new Date(cita.fecha_hora);
+            const fechaFormateada = fechaObj.toLocaleString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+            
+            let colorBadge = 'bg-primary';
+            if (cita.estado === 'ATENDIDA') colorBadge = 'bg-success';
+            if (cita.estado === 'CANCELADA') colorBadge = 'bg-danger';
+
+            return `
+                <tr>
+                    <td class="ps-3 fw-bold">#${cita.id}</td>
+                    <td>${cita.paciente_id}</td>
+                    <td>${cita.doctor_id}</td>
+                    <td>${fechaFormateada}</td>
+                    <td><span class="d-inline-block text-truncate" style="max-width: 150px;" title="${cita.motivo}">${cita.motivo || 'N/A'}</span></td>
+                    <td><span class="badge ${colorBadge}">${cita.estado || 'AGENDADA'}</span></td>
+                    <td class="pe-3">
+                        <button class="btn btn-sm btn-outline-success" onclick="actualizarEstado(${cita.id}, 'ATENDIDA')" title="Atendida"><i class="bi bi-check-lg"></i></button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="actualizarEstado(${cita.id}, 'CANCELADA')" title="Cancelar"><i class="bi bi-x-lg"></i></button>
+                    </td>
+                </tr>
+            `;
+        }
+
+        async function actualizarEstado(id, nuevoEstado) {
+            try {
+                const res = await fetch(`/clinica/cita/${id}/estado?nuevo_estado=${nuevoEstado}`, {
+                    method: 'PUT',
+                    headers: getAuthHeaders()
+                });
+                if(res.ok) {
+                    alert(`Cita #${id} actualizada a ${nuevoEstado}`);
+                    document.getElementById('fechaBusqueda').value ? buscarAgenda() : buscarPorDoctor();
+                } else {
+                    alert("Error al actualizar la cita");
+                }
+            } catch(e) { alert("Error de red"); }
+        }
+
+        // --- ENDPOINT POST: GUARDAR CITA ---
         document.getElementById('formCita')?.addEventListener('submit', async function(e) {
             e.preventDefault();
             const payload = {
@@ -730,7 +771,7 @@
                 headers: getAuthHeaders(),
                 body: JSON.stringify(payload)
             });
-            if (manejarErrorSesion(response)) return;
+            if (response.status === 401) return cerrarSesion();
 
             const msj = document.getElementById('mensajeCita');
             msj.className = 'alert mt-3';
@@ -739,7 +780,7 @@
                 msj.classList.add('alert-success');
                 msj.innerHTML = `<i class="bi bi-check-circle-fill"></i> ¡Cita orquestada con éxito! ID asignado: ${data.id}.`;
                 this.reset(); 
-                verificarHorariosDoctor();
+                if (typeof verificarHorariosDoctor === "function") verificarHorariosDoctor();
             } else {
                 const errorData = await response.json();
                 msj.classList.add('alert-danger');
@@ -747,24 +788,22 @@
             }
         });
 
-        // --- ENDPOINT GET: VER AGENDA (Requiere Token) ---
+        // --- ENDPOINT GET: VER AGENDA POR FECHA ---
         async function buscarAgenda() {
             const fecha = document.getElementById('fechaBusqueda').value;
             if(!fecha) return alert("Seleccione una fecha");
 
             const response = await fetch('/clinica/citas/' + fecha, { headers: getAuthHeaders() });
-            if (manejarErrorSesion(response)) return;
+            if (response.status === 401) return cerrarSesion();
             
             const citas = await response.json();
             const tbody = document.getElementById('tablaAgenda');
             tbody.innerHTML = "";
-            if(citas.length === 0) { tbody.innerHTML = "<tr><td colspan='7' class='text-center text-muted'>No hay citas registradas.</td></tr>"; return; }
-            citas.forEach(cita => { 
-                if (typeof construirFilaTabla === "function") tbody.innerHTML += construirFilaTabla(cita); 
-            });
+            if(citas.length === 0) { tbody.innerHTML = "<tr><td colspan='7' class='text-center text-muted'>No hay citas registradas en esta fecha.</td></tr>"; return; }
+            citas.forEach(cita => { tbody.innerHTML += construirFilaTabla(cita); });
         }
 
-        // --- ENDPOINT POST: PROCEDIMIENTO (Requiere Token) ---
+        // --- ENDPOINT POST: PROCEDIMIENTO ---
         document.getElementById('formProcedimiento')?.addEventListener('submit', async function(e) {
             e.preventDefault();
             const payload = {
@@ -780,12 +819,12 @@
                 headers: getAuthHeaders(),
                 body: JSON.stringify(payload)
             });
-            if (manejarErrorSesion(response)) return;
+            if (response.status === 401) return cerrarSesion();
 
-            const data = await response.json();
             const msj = document.getElementById('mensajeProc');
             msj.classList.remove('d-none');
             if (response.ok) { 
+                const data = await response.json();
                 msj.className = 'alert alert-success mt-3'; 
                 msj.textContent = `Procedimiento registrado exitosamente con ID: ${data.id}.`; 
                 this.reset();
@@ -793,21 +832,19 @@
             else { msj.className = 'alert alert-danger mt-3'; msj.textContent = "Error al guardar el procedimiento."; }
         });
 
-        // --- ENDPOINT GET: CITAS POR DOCTOR (Requiere Token) ---
+        // --- ENDPOINT GET: CITAS POR DOCTOR ---
         async function buscarPorDoctor() {
             const docId = document.getElementById('doctorBusqueda').value;
-            if(!docId) return alert("Ingrese el ID del doctor");
+            if(!docId) return alert("Ingrese o seleccione el ID del doctor");
 
             const response = await fetch('/clinica/citas/doctor/' + docId, { headers: getAuthHeaders() });
-            if (manejarErrorSesion(response)) return;
+            if (response.status === 401) return cerrarSesion();
             
             const citas = await response.json();
             const tbody = document.getElementById('tablaAgenda');
             tbody.innerHTML = "";
             if(citas.length === 0) { tbody.innerHTML = "<tr><td colspan='7' class='text-center text-muted'>No hay citas para este doctor.</td></tr>"; return; }
-            citas.forEach(cita => { 
-                if (typeof construirFilaTabla === "function") tbody.innerHTML += construirFilaTabla(cita); 
-            });
+            citas.forEach(cita => { tbody.innerHTML += construirFilaTabla(cita); });
         }
     </script>
 </body>
