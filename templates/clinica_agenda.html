@@ -744,13 +744,22 @@
                     method: 'PUT',
                     headers: getAuthHeaders()
                 });
+                
+                // ¡LÍNEA CLAVE! Si el token expira, cerramos sesión automáticamente
+                if (res.status === 401) return cerrarSesion();
+
                 if(res.ok) {
                     alert(`Cita #${id} actualizada a ${nuevoEstado}`);
+                    // Recarga la tabla activa en ese momento
                     document.getElementById('fechaBusqueda').value ? buscarAgenda() : buscarPorDoctor();
                 } else {
-                    alert("Error al actualizar la cita");
+                    // Atrapamos el error exacto que manda el backend
+                    const errorData = await res.json();
+                    alert("Error al actualizar la cita: " + (errorData.detail || "Error en el servidor"));
                 }
-            } catch(e) { alert("Error de red"); }
+            } catch(e) { 
+                alert("Error de red o no hay conexión con el servidor"); 
+            }
         }
 // ==========================================
         // FUNCIÓN PARA VERIFICAR HORARIOS (G1)
