@@ -44,7 +44,7 @@ ALGORITHM = "HS256"
 # ==========================================
 # ESQUEMAS DE AUTENTICACIÓN
 # ==========================================
-URL_GRUPO3_PACIENTES = "https://backend-ecosalud.onrender.com/pacientes" 
+URL_GRUPO3_PACIENTES = "https://backend-ecosalud.onrender.com" 
 
 class LoginRequest(BaseModel):
     email: str
