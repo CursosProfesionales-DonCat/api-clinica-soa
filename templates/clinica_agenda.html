@@ -546,7 +546,7 @@
 
                 const data = await response.json();
 
-                if (response.ok && data.access_token) {
+               if (response.ok && data.access_token) {
                     localStorage.setItem('token_clinica', data.access_token);
                     localStorage.setItem('rol_actual', rolSeleccionadoTemporal);
                     
@@ -554,6 +554,8 @@
                     
                     adaptarMenuPorRol(); 
                     cargarDoctores(); 
+                    cargarPacientes(); // <-- ¡Faltaba llamar a los pacientes del G3!
+                    cargarCitas();     // <-- Y faltaba cargar el histórico de citas
                 } else {
                     document.getElementById('error-text').innerText = data.detail || data.message || "Código incorrecto";
                     errorDiv.classList.remove('d-none');
