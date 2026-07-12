@@ -439,21 +439,23 @@
             const selectCitaProc = document.getElementById('procCitaId');
             if (!selectCitaProc) return;
 
+            // 1. Extraemos el token directamente para asegurar que existe
             const token = localStorage.getItem('token_clinica');
             const rol = localStorage.getItem('rol_actual');
-
-            // 1. BLINDAJE TOTAL: Si no hay token o NO eres el administrador de clínica (G2), abortamos silenciosamente.
+            
             if (!token || rol !== 'clinica') {
-                selectCitaProc.innerHTML = '<option value="">Solo disponible para administradores...</option>';
+                console.warn("Carga de citas abortada: No hay token o el usuario no es G2.");
+                selectCitaProc.innerHTML = '<option value="">No autorizado / Inicie sesión</option>';
                 return;
             }
 
             try {
-                // 2. Llamada segura usando el token directamente
+                // 2. Construimos la cabecera manualmente para evitar fallos de formato
                 const res = await fetch('/clinica/citas', { 
+                    method: 'GET',
                     headers: { 
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
+                        'Authorization': 'Bearer ' + token 
                     } 
                 });
 
@@ -469,13 +471,14 @@
                     
                     selectCitaProc.innerHTML = opcionesHTML;
                 } else if (res.status === 401) {
-                    selectCitaProc.innerHTML = '<option value="">No autorizado (Token inválido)</option>';
+                    console.error("El backend rechazó el token. Formato inválido o expirado.");
+                    selectCitaProc.innerHTML = '<option value="">Sesión expirada (401)</option>';
                 } else {
-                    selectCitaProc.innerHTML = '<option value="">Error al cargar histórico</option>';
+                    selectCitaProc.innerHTML = '<option value="">Error en el servidor</option>';
                 }
             } catch (err) { 
-                console.error("Error crítico al cargar citas:", err);
-                selectCitaProc.innerHTML = '<option value="">Error interno del Gateway</option>';
+                console.error("Error crítico de red al cargar citas:", err);
+                selectCitaProc.innerHTML = '<option value="">Error de conexión interna</option>';
             }
         }
         // ==========================================
