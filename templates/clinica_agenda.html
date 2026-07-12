@@ -419,11 +419,11 @@
 
     <script>
         // ==========================================
-        // VARIABLES GLOBALES (Añadido mfaTokenTemporal)
+        // VARIABLES GLOBALES
         // ==========================================
         let emailTemporal = "";
         let rolSeleccionadoTemporal = "";
-        let mfaTokenTemporal = ""; // Especial para el Grupo 3
+        let mfaTokenTemporal = ""; 
 
         if (localStorage.getItem('token_clinica')) {
             document.getElementById('login-overlay').setAttribute('style', 'display: none !important;');
@@ -460,9 +460,38 @@
             paciente: { 
                 base: "https://backend-ecosalud.onrender.com", 
                 login: "/paciente/login",            
-                verify: "/paciente/verify-mfa" // Ruta confirmada del G3  
+                verify: "/paciente/verify-mfa"  
             }
         };
+
+        // ==========================================
+        // DISEÑO Y CONSTRUCCIÓN DE TABLAS (Corregido)
+        // ==========================================
+        function construirFilaTabla(cita) {
+            // Diseño de estados con insignias Bootstrap
+            let badgeClass = "bg-secondary";
+            if(cita.estado === "AGENDADA") badgeClass = "bg-warning text-dark";
+            if(cita.estado === "ATENDIDA") badgeClass = "bg-success";
+            if(cita.estado === "CANCELADA") badgeClass = "bg-danger";
+
+            // Formateo de fecha profesional
+            const fechaObj = new Date(cita.fecha_hora);
+            const fechaTxt = fechaObj.toLocaleString('es-PE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+
+            return `
+                <tr class="align-middle">
+                    <td class="ps-3 fw-bold text-primary">#${cita.id}</td>
+                    <td><i class="bi bi-person text-muted me-1"></i> G3-${cita.paciente_id}</td>
+                    <td><i class="bi bi-heart-pulse text-muted me-1"></i> G1-${cita.doctor_id}</td>
+                    <td class="fw-medium">${fechaTxt}</td>
+                    <td class="text-truncate" style="max-width: 150px;" title="${cita.motivo}">${cita.motivo || '<span class="text-muted fst-italic">Sin detalle</span>'}</td>
+                    <td><span class="badge ${badgeClass} shadow-sm">${cita.estado}</span></td>
+                    <td class="pe-3">
+                        <button class="btn btn-sm btn-outline-primary rounded-pill px-3"><i class="bi bi-eye"></i></button>
+                    </td>
+                </tr>
+            `;
+        }
 
         // ==========================================
         // FASE 1: LOGIN MULTI-SISTEMA
@@ -485,14 +514,12 @@
                 
                 const data = await response.json();
 
-                // Verificamos si la respuesta es exitosa (Ya no exigimos data.requiere_2fa porque G3 no lo manda)
                 if (response.ok) {
                     emailTemporal = email;
                     rolSeleccionadoTemporal = rol; 
                     
-                    // LÓGICA ESPECIAL POR ROLES PARA LA PANTALLA DE 2FA
                     if (rol === 'paciente') {
-                        mfaTokenTemporal = data.mfa_token; // Atrapamos el token de G3
+                        mfaTokenTemporal = data.mfa_token;
                         document.querySelector('#fase-2-2fa p').innerText = "Ingresa el código que te enviamos a tu correo electrónico.";
                     } else {
                         document.querySelector('#fase-2-2fa p').innerText = "Ingresa el código de 6 dígitos de tu aplicación autenticadora (Google Authenticator).";
@@ -502,13 +529,13 @@
                     document.getElementById('fase-2-2fa').classList.remove('d-none');
                     errorDiv.classList.add('d-none');
                 } else {
-                    // Mostrar el error exacto que devuelva el microservicio
                     document.getElementById('error-text').innerText = data.detail || data.message || "Credenciales incorrectas en el nodo " + rol;
                     errorDiv.classList.remove('d-none');
                     setTimeout(() => errorDiv.classList.add('d-none'), 3000);
                 }
             } catch (err) {
-                alert("Error de red conectando con el servidor de " + rol);
+                document.getElementById('error-text').innerText = "Error de red conectando con " + rol;
+                errorDiv.classList.remove('d-none');
             }
         });
 
@@ -521,20 +548,11 @@
             const errorDiv = document.getElementById('login-error');
             const servidor = RUTAS_SERVIDORES[rolSeleccionadoTemporal];
 
-            // CONSTRUIMOS EL PAYLOAD DEPENDIENDO DEL CONTRATO DEL GRUPO
             let payloadEnvio = {};
             if (rolSeleccionadoTemporal === 'paciente') {
-                // Formato exigido por el Grupo 3
-                payloadEnvio = { 
-                    mfa_token: mfaTokenTemporal, 
-                    code: codigo_2fa // G3 usa 'code'
-                };
+                payloadEnvio = { mfa_token: mfaTokenTemporal, code: codigo_2fa };
             } else {
-                // Formato exigido por Grupo 2 (Nosotros) y Grupo 1 (Doctor)
-                payloadEnvio = { 
-                    email: emailTemporal, 
-                    codigo_2fa: codigo_2fa 
-                };
+                payloadEnvio = { email: emailTemporal, codigo_2fa: codigo_2fa };
             }
 
             try {
@@ -553,20 +571,18 @@
                     document.getElementById('login-overlay').setAttribute('style', 'display: none !important;');
                     
                     adaptarMenuPorRol(); 
-                    cargarDoctores(); 
+                    cargarDependenciasIniciales(); 
                 } else {
                     document.getElementById('error-text').innerText = data.detail || data.message || "Código incorrecto";
                     errorDiv.classList.remove('d-none');
                     setTimeout(() => errorDiv.classList.add('d-none'), 3000);
                 }
             } catch (err) {
-                alert("Error de red al verificar el código en el nodo " + rolSeleccionadoTemporal);
+                document.getElementById('error-text').innerText = "Error verificando código 2FA";
+                errorDiv.classList.remove('d-none');
             }
         });
 
-        // ==========================================
-        // NAVEGACIÓN Y CIERRE DE SESIÓN
-        // ==========================================
         function volverAlLogin() {
             document.getElementById('fase-2-2fa').classList.add('d-none');
             document.getElementById('fase-1-login').classList.remove('d-none');
@@ -588,9 +604,6 @@
             if(elemento) elemento.classList.add('active');
         }
 
-        // ==========================================
-        // GESTOR DE ROLES DINÁMICO
-        // ==========================================
         function adaptarMenuPorRol() {
             const rolActual = localStorage.getItem('rol_actual');
             const menuContainer = document.getElementById('menu-links-container');
@@ -602,16 +615,13 @@
                 topbarTitle.innerHTML = '<i class="bi bi-heart-pulse-fill me-2"></i> Consultas Médicas (G1)';
                 menuContainer.innerHTML = `<a onclick="cambiarVista('vista-panel-doctor', this)" class="menu-link active"><i class="bi bi-search me-2"></i> Mis Consultas</a>`;
                 cambiarVista('vista-panel-doctor', menuContainer.firstElementChild);
-
             } else if (rolActual === 'paciente') {
                 sidebarTitle.innerHTML = '<i class="bi bi-person-badge"></i> Mi Perfil';
                 topbarTitle.innerHTML = '<i class="bi bi-person-badge-fill me-2"></i> Consultas Paciente (G3)';
                 menuContainer.innerHTML = `<a onclick="cambiarVista('vista-panel-paciente', this)" class="menu-link active"><i class="bi bi-file-earmark-medical me-2"></i> Mis Exámenes y Citas</a>`;
                 cambiarVista('vista-panel-paciente', menuContainer.firstElementChild);
-
             } else {
                 topbarTitle.innerHTML = '<i class="bi bi-grid-1x2-fill text-primary me-2"></i> API Gateway - Orquestador (G2)';
-                // Restaurar el menú original si recarga la página como admin
                 if(!menuContainer.innerHTML.includes('vista-agendar')) {
                     menuContainer.innerHTML = `
                         <a id="menu-agendar" onclick="cambiarVista('vista-agendar', this)" class="menu-link active"><i class="bi bi-calendar-plus me-2"></i> Agendar Cita</a>
@@ -624,25 +634,41 @@
         }
 
         // ==========================================
-        // CARGAS INICIALES DESDE MICROSERVICIOS
+        // CARGAS BLINDADAS DESDE MICROSERVICIOS
         // ==========================================
+        function cargarDependenciasIniciales() {
+            if (localStorage.getItem('token_clinica')) {
+                cargarDoctores();
+                cargarPacientes();
+                cargarCitas(); 
+            }
+        }
+        
+        document.addEventListener("DOMContentLoaded", cargarDependenciasIniciales);
+
         async function cargarDoctores() {
-            if (!localStorage.getItem('token_clinica')) return; 
-            
             const selectDoctor = document.getElementById('doctorId');
             const selectDoctorBusqueda = document.getElementById('doctorBusqueda');
             try {
                 const res = await fetch('https://servicio-doctor-soa.onrender.com/doctores?activo=true');
                 if (res.ok) {
-                    const doctores = await res.json();
+                    let data = await res.json();
+                    // Seguridad: Aseguramos que sea un array aunque el backend devuelva un objeto
+                    let doctores = Array.isArray(data) ? data : (data.data || []);
+                    
                     let opcionesHTML = '<option value="">Seleccione un doctor...</option>';
                     doctores.forEach(doc => {
-                        opcionesHTML += `<option value="${doc.id}">Dr. ${doc.nombres} ${doc.apellidos} - ${doc.especialidad}</option>`;
+                        opcionesHTML += `<option value="${doc.id}">Dr. ${doc.nombres || ''} ${doc.apellidos || ''} - ${doc.especialidad || 'General'}</option>`;
                     });
                     if(selectDoctor) selectDoctor.innerHTML = opcionesHTML;
                     if(selectDoctorBusqueda) selectDoctorBusqueda.innerHTML = '<option value="">Filtre por doctor...</option>' + opcionesHTML.replace('<option value="">Seleccione un doctor...</option>', '');
+                } else {
+                    if(selectDoctor) selectDoctor.innerHTML = '<option value="" class="text-danger">❌ Error API G1 (Doctores)</option>';
                 }
-            } catch (err) { console.error("Error al cargar doctores"); }
+            } catch (err) { 
+                console.error("Error al cargar doctores", err); 
+                if(selectDoctor) selectDoctor.innerHTML = '<option value="" class="text-danger">❌ Falla conexión G1 (CORS)</option>';
+            }
         }
 
         async function cargarPacientes() {
@@ -651,26 +677,26 @@
             try {
                 const res = await fetch('https://backend-ecosalud.onrender.com/pacientes'); 
                 if (res.ok) {
-                    const pacientes = await res.json();
+                    let data = await res.json();
+                    // Seguridad: Aseguramos que sea un array aunque el G3 devuelva un objeto envuelto
+                    let pacientes = Array.isArray(data) ? data : (data.data || data.pacientes || []);
+                    
                     let opcionesHTML = '<option value="">Seleccione un paciente...</option>';
                     pacientes.forEach(pac => {
-                        const nombreFinal = pac.nombres ? `${pac.nombres} ${pac.apellidos}` : (pac.nombre || `Paciente ID: ${pac.id}`);
+                        const nombreFinal = pac.nombres ? `${pac.nombres} ${pac.apellidos || ''}` : (pac.nombre || `Paciente ID: ${pac.id}`);
                         opcionesHTML += `<option value="${pac.id}">${nombreFinal}</option>`;
                     });
                     if(selectPacienteCita) selectPacienteCita.innerHTML = opcionesHTML;
                     if(selectPacienteProc) selectPacienteProc.innerHTML = opcionesHTML;
+                } else {
+                    if(selectPacienteCita) selectPacienteCita.innerHTML = '<option value="" class="text-danger">❌ Acceso denegado G3 (401/403)</option>';
                 }
-            } catch (err) { console.error("Error al cargar pacientes"); }
+            } catch (err) { 
+                console.error("Error al cargar pacientes", err); 
+                if(selectPacienteCita) selectPacienteCita.innerHTML = '<option value="" class="text-danger">❌ Falla conexión G3 (CORS)</option>';
+            }
         }
         
-       document.addEventListener("DOMContentLoaded", function() {
-            if (localStorage.getItem('token_clinica')) {
-                cargarDoctores();
-                cargarPacientes();
-                cargarCitas(); 
-            }
-        });
-// --- NUEVA FUNCIÓN PARA CARGAR EL HISTÓRICO DE CITAS ---
         async function cargarCitas() {
             const selectCitaProc = document.getElementById('procCitaId');
             if (!selectCitaProc) return;
@@ -680,26 +706,28 @@
                 if (manejarErrorSesion(res)) return;
 
                 if (res.ok) {
-                    const citas = await res.json();
-                    let opcionesHTML = '<option value="">Seleccione una cita...</option>';
+                    let data = await res.json();
+                    let citas = Array.isArray(data) ? data : (data.data || []);
                     
-                    // Invertir el array para ver las citas más recientes primero
+                    let opcionesHTML = '<option value="">Seleccione una cita origen...</option>';
+                    
                     citas.reverse().forEach(cita => {
                         const fechaObj = new Date(cita.fecha_hora);
                         const fechaFormateada = fechaObj.toLocaleString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-                        opcionesHTML += `<option value="${cita.id}">Cita #${cita.id} - ${fechaFormateada} (Paciente: ${cita.paciente_id})</option>`;
+                        opcionesHTML += `<option value="${cita.id}">Cita #${cita.id} - ${fechaFormateada} (Paciente: G3-${cita.paciente_id})</option>`;
                     });
                     
                     selectCitaProc.innerHTML = opcionesHTML;
                 } else {
-                    selectCitaProc.innerHTML = '<option value="">Error al cargar citas</option>';
+                    selectCitaProc.innerHTML = '<option value="" class="text-danger">❌ Error de backend Gateway</option>';
                 }
             } catch (err) { 
                 console.error("Error al cargar citas", err);
-                selectCitaProc.innerHTML = '<option value="">Error de conexión</option>';
+                selectCitaProc.innerHTML = '<option value="" class="text-danger">❌ Error de red</option>';
             }
         }
-        // --- ENDPOINT: DISPONIBILIDAD DE DOCTOR (Requiere Token) ---
+
+        // --- ENDPOINT: DISPONIBILIDAD DE DOCTOR ---
         async function verificarHorariosDoctor() {
             const doctorId = document.getElementById('doctorId').value;
             const contenedor = document.getElementById('contenedorDisponibilidad');
@@ -730,7 +758,7 @@
             } catch (err) { console.error(err); }
         }
 
-        // --- ENDPOINT POST: GUARDAR CITA (Requiere Token) ---
+        // --- ENDPOINT POST: GUARDAR CITA ---
         document.getElementById('formCita')?.addEventListener('submit', async function(e) {
             e.preventDefault();
             const payload = {
@@ -758,6 +786,7 @@
                 msj.innerHTML = `<i class="bi bi-check-circle-fill"></i> ¡Cita orquestada con éxito! ID asignado: ${data.id}.`;
                 this.reset(); 
                 verificarHorariosDoctor();
+                cargarCitas(); // Refrescar citas para el selector de procedimientos
             } else {
                 const errorData = await response.json();
                 msj.classList.add('alert-danger');
@@ -765,7 +794,7 @@
             }
         });
 
-        // --- ENDPOINT GET: VER AGENDA (Requiere Token) ---
+        // --- ENDPOINT GET: VER AGENDA ---
         async function buscarAgenda() {
             const fecha = document.getElementById('fechaBusqueda').value;
             if(!fecha) return alert("Seleccione una fecha");
@@ -776,13 +805,11 @@
             const citas = await response.json();
             const tbody = document.getElementById('tablaAgenda');
             tbody.innerHTML = "";
-            if(citas.length === 0) { tbody.innerHTML = "<tr><td colspan='7' class='text-center text-muted'>No hay citas registradas.</td></tr>"; return; }
-            citas.forEach(cita => { 
-                if (typeof construirFilaTabla === "function") tbody.innerHTML += construirFilaTabla(cita); 
-            });
+            if(citas.length === 0) { tbody.innerHTML = "<tr><td colspan='7' class='text-center py-5 text-muted'><i class="bi bi-calendar-x fs-1 d-block mb-2"></i>No hay citas para esta fecha.</td></tr>"; return; }
+            citas.forEach(cita => { tbody.innerHTML += construirFilaTabla(cita); });
         }
 
-        // --- ENDPOINT POST: PROCEDIMIENTO (Requiere Token) ---
+        // --- ENDPOINT POST: PROCEDIMIENTO ---
         document.getElementById('formProcedimiento')?.addEventListener('submit', async function(e) {
             e.preventDefault();
             const payload = {
@@ -800,18 +827,18 @@
             });
             if (manejarErrorSesion(response)) return;
 
-            const data = await response.json();
             const msj = document.getElementById('mensajeProc');
             msj.classList.remove('d-none');
             if (response.ok) { 
-                msj.className = 'alert alert-success mt-3'; 
-                msj.textContent = `Procedimiento registrado exitosamente con ID: ${data.id}.`; 
+                const data = await response.json();
+                msj.className = 'alert alert-success mt-3 shadow-sm'; 
+                msj.innerHTML = `<i class="bi bi-check-circle-fill me-2"></i> Procedimiento registrado exitosamente con ID: ${data.id}.`; 
                 this.reset();
             }
-            else { msj.className = 'alert alert-danger mt-3'; msj.textContent = "Error al guardar el procedimiento."; }
+            else { msj.className = 'alert alert-danger mt-3'; msj.innerHTML = "<i class='bi bi-x-circle-fill me-2'></i> Error al guardar el procedimiento."; }
         });
 
-        // --- ENDPOINT GET: CITAS POR DOCTOR (Requiere Token) ---
+        // --- ENDPOINT GET: CITAS POR DOCTOR ---
         async function buscarPorDoctor() {
             const docId = document.getElementById('doctorBusqueda').value;
             if(!docId) return alert("Ingrese el ID del doctor");
@@ -822,10 +849,8 @@
             const citas = await response.json();
             const tbody = document.getElementById('tablaAgenda');
             tbody.innerHTML = "";
-            if(citas.length === 0) { tbody.innerHTML = "<tr><td colspan='7' class='text-center text-muted'>No hay citas para este doctor.</td></tr>"; return; }
-            citas.forEach(cita => { 
-                if (typeof construirFilaTabla === "function") tbody.innerHTML += construirFilaTabla(cita); 
-            });
+            if(citas.length === 0) { tbody.innerHTML = "<tr><td colspan='7' class='text-center py-5 text-muted'><i class="bi bi-person-x fs-1 d-block mb-2"></i>El doctor no tiene atenciones.</td></tr>"; return; }
+            citas.forEach(cita => { tbody.innerHTML += construirFilaTabla(cita); });
         }
     </script>
 </body>
