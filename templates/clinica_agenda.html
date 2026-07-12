@@ -794,44 +794,20 @@
         });
 
         // --- ENDPOINT GET: CITAS POR DOCTOR (Requiere Token) ---
-       // --- ENDPOINT GET: CITAS POR DOCTOR ---
         async function buscarPorDoctor() {
             const docId = document.getElementById('doctorBusqueda').value;
             if(!docId) return alert("Ingrese el ID del doctor");
 
-            const token = localStorage.getItem('token_clinica');
-
-            try {
-                // Hacemos el fetch con el token directo y SIN manejarErrorSesion
-                const response = await fetch('/clinica/citas/doctor/' + docId, { 
-                    method: 'GET',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + token 
-                    } 
-                });
-                
-                if (response.ok) {
-                    const citas = await response.json();
-                    const tbody = document.getElementById('tablaAgenda');
-                    tbody.innerHTML = "";
-                    
-                    if(citas.length === 0) { 
-                        tbody.innerHTML = "<tr><td colspan='7' class='text-center text-muted'>No hay citas para este doctor.</td></tr>"; 
-                        return; 
-                    }
-                    
-                    citas.forEach(cita => { 
-                        if (typeof construirFilaTabla === "function") tbody.innerHTML += construirFilaTabla(cita); 
-                    });
-                } else {
-                    console.error("Error del servidor:", response.status);
-                    alert("Error al cargar la agenda del doctor.");
-                }
-            } catch (err) {
-                console.error("Error de conexión:", err);
-                alert("Hubo un problema de red al buscar.");
-            }
+            const response = await fetch('/clinica/citas/doctor/' + docId, { headers: getAuthHeaders() });
+            if (manejarErrorSesion(response)) return;
+            
+            const citas = await response.json();
+            const tbody = document.getElementById('tablaAgenda');
+            tbody.innerHTML = "";
+            if(citas.length === 0) { tbody.innerHTML = "<tr><td colspan='7' class='text-center text-muted'>No hay citas para este doctor.</td></tr>"; return; }
+            citas.forEach(cita => { 
+                if (typeof construirFilaTabla === "function") tbody.innerHTML += construirFilaTabla(cita); 
+            });
         }
     </script>
 </body>
