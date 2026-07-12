@@ -745,20 +745,22 @@
                     headers: getAuthHeaders()
                 });
                 
-                // ¡LÍNEA CLAVE! Si el token expira, cerramos sesión automáticamente
-                if (res.status === 401) return cerrarSesion();
+                // Quitamos el cerrarSesion() y en su lugar capturamos el mensaje del backend
+                if (res.status === 401) {
+                    const errorData = await res.json();
+                    console.error("MOTIVO DEL RECHAZO 401:", errorData);
+                    alert("Atención: El servidor G2 devolvió 401. \nDetalle: " + (errorData.detail || errorData.message || "Revisa la consola (F12)"));
+                    return; 
+                }
 
                 if(res.ok) {
                     alert(`Cita #${id} actualizada a ${nuevoEstado}`);
-                    // Recarga la tabla activa en ese momento
                     document.getElementById('fechaBusqueda').value ? buscarAgenda() : buscarPorDoctor();
                 } else {
-                    // Atrapamos el error exacto que manda el backend
-                    const errorData = await res.json();
-                    alert("Error al actualizar la cita: " + (errorData.detail || "Error en el servidor"));
+                    alert("Error al actualizar la cita. Status: " + res.status);
                 }
             } catch(e) { 
-                alert("Error de red o no hay conexión con el servidor"); 
+                alert("Error de red intentando conectar con el servidor."); 
             }
         }
 // ==========================================
