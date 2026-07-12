@@ -752,7 +752,23 @@
                 }
             } catch(e) { alert("Error de red"); }
         }
-
+// ==========================================
+        // FUNCIÓN PARA VERIFICAR HORARIOS (G1)
+        // ==========================================
+        async function verificarHorariosDoctor() {
+            const docId = document.getElementById('doctorId').value;
+            if (!docId) {
+                document.getElementById('contenedorDisponibilidad').classList.add('d-none');
+                return;
+            }
+            
+            // Aquí en el futuro puedes hacer un fetch al G1 para traer las horas ocupadas
+            console.log("Verificando disponibilidad para el doctor ID:", docId);
+            
+            // Por ahora solo evitamos que la consola arroje el ReferenceError
+            // y ocultamos visualmente el contenedor si estuviera visible
+            document.getElementById('contenedorDisponibilidad').classList.add('d-none');
+        }
         // --- ENDPOINT POST: GUARDAR CITA ---
         document.getElementById('formCita')?.addEventListener('submit', async function(e) {
             e.preventDefault();
