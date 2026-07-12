@@ -11,7 +11,7 @@ from routers import clinica
 from database import engine, Base
 
 # Configuración para descifrar el Token (DEBE SER LA MISMA QUE EN clinica.py)
-SECRET_KEY = "tu_clave_secreta_super_segura"
+SECRET_KEY = "8f4e92b3a6d71c85f0e9b4a1c3d2e5f68a7b9c0d1e2f3a4b5c6d7e8f9a0b1c2d"
 ALGORITHM = "HS256"
 
 app = FastAPI(
