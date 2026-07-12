@@ -624,6 +624,7 @@
         }
 
         // ==========================================
+        // ==========================================
         // CARGAS INICIALES DESDE MICROSERVICIOS
         // ==========================================
         async function cargarDoctores() {
@@ -645,8 +646,45 @@
             } catch (err) { console.error("Error al cargar doctores"); }
         }
 
-       async function cargarPacientes
-// --- NUEVA FUNCIÓN PARA CARGAR EL HISTÓRICO DE CITAS ---
+        async function cargarPacientes() {
+            const selectPacienteCita = document.getElementById('pacienteId');
+            const selectPacienteProc = document.getElementById('procPacienteId');
+            try {
+                const res = await fetch('https://backend-ecosalud.onrender.com/pacientes'); 
+                if (res.ok) {
+                    const data = await res.json();
+                    
+                    // Extraer Array robustamente por si el G3 lo envía dentro de un objeto
+                    const pacientes = Array.isArray(data) ? data : (data.pacientes || data.data || []);
+                    
+                    let opcionesHTML = '<option value="">Seleccione un paciente...</option>';
+                    pacientes.forEach(pac => {
+                        const nombreFinal = pac.nombres ? `${pac.nombres} ${pac.apellidos || ''}` : (pac.nombre || `Paciente ID: ${pac.id}`);
+                        opcionesHTML += `<option value="${pac.id}">${nombreFinal}</option>`;
+                    });
+                    
+                    if(selectPacienteCita) selectPacienteCita.innerHTML = opcionesHTML;
+                    if(selectPacienteProc) selectPacienteProc.innerHTML = opcionesHTML;
+                } else {
+                    if(selectPacienteCita) selectPacienteCita.innerHTML = '<option value="">Error en el servidor G3</option>';
+                    if(selectPacienteProc) selectPacienteProc.innerHTML = '<option value="">Error en el servidor G3</option>';
+                }
+            } catch (err) { 
+                console.error("Error al cargar pacientes:", err); 
+                if(selectPacienteCita) selectPacienteCita.innerHTML = '<option value="">Error de conexión / CORS</option>';
+                if(selectPacienteProc) selectPacienteProc.innerHTML = '<option value="">Error de conexión / CORS</option>';
+            }
+        }
+        
+        document.addEventListener("DOMContentLoaded", function() {
+            if (localStorage.getItem('token_clinica')) {
+                cargarDoctores();
+                cargarPacientes();
+                cargarCitas(); 
+            }
+        });
+
+        // --- NUEVA FUNCIÓN PARA CARGAR EL HISTÓRICO DE CITAS ---
         async function cargarCitas() {
             const selectCitaProc = document.getElementById('procCitaId');
             if (!selectCitaProc) return;
