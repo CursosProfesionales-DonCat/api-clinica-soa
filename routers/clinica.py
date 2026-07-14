@@ -156,11 +156,14 @@ def verificar_codigo_2fa(datos: Verify2FARequest, db: Session = Depends(get_db))
     
     token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
     
+    # RETORNO MODIFICADO: Agregamos el email y el código aquí
     return {
         "status": "success",
         "message": "Acceso autorizado",
         "access_token": token,
-        "token_type": "bearer"
+        "token_type": "bearer",
+        "email": usuario.email,           # <-- Añadido a petición del frontend
+        "codigo_2fa": datos.codigo_2fa    # <-- Añadido a petición del frontend
     }
 
 # ==========================================
