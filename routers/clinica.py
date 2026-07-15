@@ -85,7 +85,7 @@ def enviar_codigo_por_correo(destinatario: str, codigo: str):
     # LEYENDO LA CLAVE DE BREVO DESDE LAS VARIABLES DE ENTORNO DE RENDER
     password_smtp = os.environ.get("BREVO_SMTP_KEY") 
 
-    msg = MIMEText(f"Hola, tu código de verificación para entrar a ECOSALUD es: {codigo}\n\nEste código expira en 5 minutos.")
+    msg = MIMEText(f"Hola, tu código de verificación para entrar a ECOSALUD es: {codigo}\n\nEste código expira en 30 segundos.")
     msg['Subject'] = "Código de Seguridad 2FA - ECOSALUD"
     msg['From'] = remitente
     msg['To'] = destinatario
