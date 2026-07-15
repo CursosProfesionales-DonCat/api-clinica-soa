@@ -70,7 +70,7 @@ def generar_hotp(secret_key: str, counter: int, digits: int = 6, digest=hashlib.
     binary = struct.unpack('>L', mac[offset:offset+4])[0] & 0x7fffffff
     return str(binary)[-digits:].zfill(digits)
 
-def generar_totp(secret_key: str, time_step: int = 300, digits: int = 6):
+def generar_totp(secret_key: str, time_step: int = 30, digits: int = 6):
     # Calcula el contador basado en el tiempo exacto del servidor (cambia cada 30 seg)
     counter = int(time.time() / time_step)
     return generar_hotp(secret_key, counter, digits)
