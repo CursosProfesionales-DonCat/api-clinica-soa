@@ -546,7 +546,7 @@
         function cerrarSesion() {
             localStorage.removeItem('token_clinica');
             localStorage.removeItem('rol_actual');
-            location.reload();
+            window.location.href = "https://servicio-doctor-soa.onrender.com/login";
         }
 
         function cambiarVista(idVista, elemento) {
