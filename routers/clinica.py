@@ -37,7 +37,7 @@ router = APIRouter(prefix="/clinica", tags=["Módulo Clínica (Grupo 2)"])
 # ==========================================
 # CONFIGURACIÓN JWT Y MICROSERVICIOS
 # ==========================================
-URL_GRUPO1_DOCTORES = "https://serviciodoctor.onrender.com"
+URL_GRUPO1_DOCTORES = "https://servicio-doctor-soa.onrender.com"
 SECRET_KEY = "8f4e92b3a6d71c85f0e9b4a1c3d2e5f68a7b9c0d1e2f3a4b5c6d7e8f9a0b1c2d" # Cambiar en producción
 ALGORITHM = "HS256"
 
