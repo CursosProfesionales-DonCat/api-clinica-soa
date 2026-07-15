@@ -373,8 +373,12 @@
         let rolSeleccionadoTemporal = "";
         let mfaTokenTemporal = ""; // Especial para el Grupo 3
 
+        // PARCHE 1: Verificamos si 'login-overlay' existe antes de ocultarlo
         if (localStorage.getItem('token_clinica')) {
-            document.getElementById('login-overlay').setAttribute('style', 'display: none !important;');
+            let overlay = document.getElementById('login-overlay');
+            if (overlay) {
+                overlay.setAttribute('style', 'display: none !important;');
+            }
             adaptarMenuPorRol(); 
         }
 
@@ -382,7 +386,7 @@
             return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token_clinica')}` };
         }
 
-     // --- NUEVA FUNCIÓN PARA CARGAR EL HISTÓRICO DE CITAS ---
+        // --- NUEVA FUNCIÓN PARA CARGAR EL HISTÓRICO DE CITAS ---
         async function cargarCitas() {
             const selectCitaProc = document.getElementById('procCitaId');
             if (!selectCitaProc) return;
@@ -433,7 +437,8 @@
         // ==========================================
         // FASE 1: LOGIN MULTI-SISTEMA
         // ==========================================
-        document.getElementById('formLogin').addEventListener('submit', async function(e) {
+        // PARCHE 2: Agregamos el signo de interrogación (?.) a formLogin
+        document.getElementById('formLogin')?.addEventListener('submit', async function(e) {
             e.preventDefault();
             const email = document.getElementById('loginUser').value;
             const password = document.getElementById('loginPass').value;
@@ -481,7 +486,8 @@
         // ==========================================
         // FASE 2: VERIFICACIÓN MULTI-SISTEMA
         // ==========================================
-        document.getElementById('form2FA').addEventListener('submit', async function(e) {
+        // PARCHE 3: Agregamos el signo de interrogación (?.) a form2FA
+        document.getElementById('form2FA')?.addEventListener('submit', async function(e) {
             e.preventDefault();
             const codigo_2fa = document.getElementById('codigo2FA').value;
             const errorDiv = document.getElementById('login-error');
@@ -516,7 +522,8 @@
                     localStorage.setItem('token_clinica', data.access_token);
                     localStorage.setItem('rol_actual', rolSeleccionadoTemporal);
                     
-                    document.getElementById('login-overlay').setAttribute('style', 'display: none !important;');
+                    let finalOverlay = document.getElementById('login-overlay');
+                    if(finalOverlay) finalOverlay.setAttribute('style', 'display: none !important;');
                     
                     adaptarMenuPorRol(); 
                     
