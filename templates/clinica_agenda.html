@@ -151,63 +151,7 @@
 </head>
 <body>
 
-    <div id="login-overlay" class="d-flex align-items-center justify-content-center" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999; display: flex !important;">
-        <div class="card shadow-sm p-4 border-0 rounded-4" style="width: 100%; max-width: 400px; background: white;">
-            <div class="card-body">
-                <!-- Título actualizado según imagen -->
-                <div class="text-start mb-2 d-flex align-items-center">
-                    <div style="width: 12px; height: 12px; background-color: var(--medical-primary); border-radius: 50%; margin-right: 8px;"></div>
-                    <h4 class="fw-bold mb-0 text-dark" style="color: var(--medical-primary) !important;">EcoSalud</h4>
-                </div>
-                <p class="text-muted small mb-3 text-start">Panel de Autenticación</p>
-                
-                <div class="latido-linea"></div>
-                
-                <div id="login-error" class="alert alert-danger d-none small py-2 fw-bold"><i class="bi bi-exclamation-triangle-fill"></i> <span id="error-text">Credenciales inválidas</span></div>
-                
-                <div id="fase-1-login">
-                    <form id="formLogin">
-                        <div class="mb-3 text-start">
-                            <label class="form-label small fw-bold text-secondary">¿Quién eres?</label>
-                            <select id="loginRole" class="form-select border-primary fw-bold" required>
-                                <option value="clinica" selected>Administrador (G2 - Clínica)</option>
-                                <option value="doctor">Panel del Doctor (G1)</option>
-                                <option value="paciente">Panel del Paciente (G3)</option>
-                            </select>
-                        </div>
-                        <div class="mb-3 text-start">
-                            <label class="form-label small fw-bold text-secondary">Correo o Colegiatura</label>
-                            <input type="email" id="loginUser" class="form-control" placeholder="usuario@ecosalud.com" autocomplete="username" name="email" required>
-                        </div>
-                        <div class="mb-4 text-start">
-                            <label class="form-label small fw-bold text-secondary">Contraseña</label>
-                            <input type="password" id="loginPass" class="form-control" placeholder="••••••••" required>
-                        </div>
-                        <button type="submit" class="btn btn-primary w-100 py-2 fw-bold shadow-sm">Iniciar sesión</button>
-                    </form>
-                </div>
-
-                <div id="fase-2-2fa" class="d-none">
-                    <h5 class="fw-bold mb-2">Seguridad 2FA</h5>
-                    <p class="small text-muted mb-3">Ingresa el código de 6 dígitos de tu aplicación autenticadora.</p>
-
-                    <div id="caja-secreto-nuevo" class="alert alert-warning d-none text-start small">
-                        <strong>¡Primera vez!</strong> Configura tu app con esta clave secreta:
-                        <h4 id="texto-secreto" class="text-center mt-2 fw-bold text-danger" style="letter-spacing: 3px;"></h4>
-                    </div>
-
-                    <form id="form2FA">
-                        <input type="text" id="codigo2FA" class="form-control text-center fs-3 fw-bold mb-3" placeholder="000000" maxlength="6" required autocomplete="off">
-                        <button type="submit" class="btn btn-primary w-100 py-2 fw-bold shadow-sm">Ingresar al Sistema</button>
-                        <button type="button" class="btn btn-link text-secondary mt-2 small w-100" onclick="volverAlLogin()">Volver atrás</button>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="container-fluid p-0">
-        <div class="col-md-2 sidebar">
+     
             <!-- TÍTULO DINÁMICO DEL MENÚ LATERAL -->
             <h4 class="text-center" id="sidebar-title"><i class="bi bi-hospital"></i> Clínica Sur</h4>
             
