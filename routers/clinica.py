@@ -37,7 +37,7 @@ router = APIRouter(prefix="/clinica", tags=["Módulo Clínica (Grupo 2)"])
 # ==========================================
 # CONFIGURACIÓN JWT Y MICROSERVICIOS
 # ==========================================
-URL_GRUPO1_DOCTORES = "https://servicio-doctor-soa.onrender.com"
+URL_GRUPO1_DOCTORES = "https://serviciodoctor.onrender.com"
 SECRET_KEY = "8f4e92b3a6d71c85f0e9b4a1c3d2e5f68a7b9c0d1e2f3a4b5c6d7e8f9a0b1c2d" # Cambiar en producción
 ALGORITHM = "HS256"
 
@@ -70,7 +70,7 @@ def generar_hotp(secret_key: str, counter: int, digits: int = 6, digest=hashlib.
     binary = struct.unpack('>L', mac[offset:offset+4])[0] & 0x7fffffff
     return str(binary)[-digits:].zfill(digits)
 
-def generar_totp(secret_key: str, time_step: int = 30, digits: int = 6):
+def generar_totp(secret_key: str, time_step: int = 300, digits: int = 6):
     # Calcula el contador basado en el tiempo exacto del servidor (cambia cada 30 seg)
     counter = int(time.time() / time_step)
     return generar_hotp(secret_key, counter, digits)
@@ -85,7 +85,7 @@ def enviar_codigo_por_correo(destinatario: str, codigo: str):
     # LEYENDO LA CLAVE DE BREVO DESDE LAS VARIABLES DE ENTORNO DE RENDER
     password_smtp = os.environ.get("BREVO_SMTP_KEY") 
 
-    msg = MIMEText(f"Hola, tu código de verificación para entrar a ECOSALUD es: {codigo}\n\nEste código expira en 30 segundos.")
+    msg = MIMEText(f"Hola, tu código de verificación para entrar a ECOSALUD es: {codigo}\n\nEste código expira en 5 minutos.")
     msg['Subject'] = "Código de Seguridad 2FA - ECOSALUD"
     msg['From'] = remitente
     msg['To'] = destinatario
@@ -156,14 +156,11 @@ def verificar_codigo_2fa(datos: Verify2FARequest, db: Session = Depends(get_db))
     
     token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
     
-    # RETORNO MODIFICADO: Agregamos el email y el código aquí
     return {
         "status": "success",
         "message": "Acceso autorizado",
         "access_token": token,
-        "token_type": "bearer",
-        "email": usuario.email,           # <-- Añadido a petición del frontend
-        "codigo_2fa": datos.codigo_2fa    # <-- Añadido a petición del frontend
+        "token_type": "bearer"
     }
 
 # ==========================================
