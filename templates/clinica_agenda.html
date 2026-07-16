@@ -151,11 +151,63 @@
 </head>
 <body>
 
+    <div id="login-overlay" class="d-flex align-items-center justify-content-center" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999; display: flex !important;">
+        <div class="card shadow-sm p-4 border-0 rounded-4" style="width: 100%; max-width: 400px; background: white;">
+            <div class="card-body">
+                <!-- Título actualizado según imagen -->
+                <div class="text-start mb-2 d-flex align-items-center">
+                    <div style="width: 12px; height: 12px; background-color: var(--medical-primary); border-radius: 50%; margin-right: 8px;"></div>
+                    <h4 class="fw-bold mb-0 text-dark" style="color: var(--medical-primary) !important;">EcoSalud</h4>
+                </div>
+                <p class="text-muted small mb-3 text-start">Panel de Autenticación</p>
+                
+                <div class="latido-linea"></div>
+                
+                <div id="login-error" class="alert alert-danger d-none small py-2 fw-bold"><i class="bi bi-exclamation-triangle-fill"></i> <span id="error-text">Credenciales inválidas</span></div>
+                
+                <div id="fase-1-login">
+                    <form id="formLogin">
+                        <div class="mb-3 text-start">
+                            <label class="form-label small fw-bold text-secondary">¿Quién eres?</label>
+                            <select id="loginRole" class="form-select border-primary fw-bold" required>
+                                <option value="clinica" selected>Administrador (G2 - Clínica)</option>
+                                <option value="doctor">Panel del Doctor (G1)</option>
+                                <option value="paciente">Panel del Paciente (G3)</option>
+                            </select>
+                        </div>
+                        <div class="mb-3 text-start">
+                            <label class="form-label small fw-bold text-secondary">Correo o Colegiatura</label>
+                            <input type="email" id="loginUser" class="form-control" placeholder="usuario@ecosalud.com" autocomplete="username" name="email" required>
+                        </div>
+                        <div class="mb-4 text-start">
+                            <label class="form-label small fw-bold text-secondary">Contraseña</label>
+                            <input type="password" id="loginPass" class="form-control" placeholder="••••••••" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100 py-2 fw-bold shadow-sm">Iniciar sesión</button>
+                    </form>
+                </div>
+
+                <div id="fase-2-2fa" class="d-none">
+                    <h5 class="fw-bold mb-2">Seguridad 2FA</h5>
+                    <p class="small text-muted mb-3">Ingresa el código de 6 dígitos de tu aplicación autenticadora.</p>
+
+                    <div id="caja-secreto-nuevo" class="alert alert-warning d-none text-start small">
+                        <strong>¡Primera vez!</strong> Configura tu app con esta clave secreta:
+                        <h4 id="texto-secreto" class="text-center mt-2 fw-bold text-danger" style="letter-spacing: 3px;"></h4>
+                    </div>
+
+                    <form id="form2FA">
+                        <input type="text" id="codigo2FA" class="form-control text-center fs-3 fw-bold mb-3" placeholder="000000" maxlength="6" required autocomplete="off">
+                        <button type="submit" class="btn btn-primary w-100 py-2 fw-bold shadow-sm">Ingresar al Sistema</button>
+                        <button type="button" class="btn btn-link text-secondary mt-2 small w-100" onclick="volverAlLogin()">Volver atrás</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="container-fluid p-0">
-        <div class="row g-0"> <!-- ✨ ESTA ES LA LÍNEA MÁGICA QUE ARREGLA EL DISEÑO ✨ -->
-            
-            <div class="col-md-2 sidebar">
-                     
+        <div class="col-md-2 sidebar">
             <!-- TÍTULO DINÁMICO DEL MENÚ LATERAL -->
             <h4 class="text-center" id="sidebar-title"><i class="bi bi-hospital"></i> Clínica Sur</h4>
             
@@ -289,7 +341,7 @@
                             <div class="row mb-4 g-4">
                                 <div class="col-md-6">
                                     <label class="form-label fw-bold"><i class="bi bi-search me-1"></i> ID Cita Origen (Buscar)</label>
-                                    <select id="procCitaId" class="form-select" required placeholder="Seleccione o busque una cita...">
+                                    <select id="procCitaId" required placeholder="Seleccione o busque una cita...">
                                         <option value="">Cargando histórico de citas...</option>
                                     </select>
                                 </div>
@@ -373,12 +425,8 @@
         let rolSeleccionadoTemporal = "";
         let mfaTokenTemporal = ""; // Especial para el Grupo 3
 
-        // PARCHE 1: Verificamos si 'login-overlay' existe antes de ocultarlo
         if (localStorage.getItem('token_clinica')) {
-            let overlay = document.getElementById('login-overlay');
-            if (overlay) {
-                overlay.setAttribute('style', 'display: none !important;');
-            }
+            document.getElementById('login-overlay').setAttribute('style', 'display: none !important;');
             adaptarMenuPorRol(); 
         }
 
@@ -386,33 +434,15 @@
             return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token_clinica')}` };
         }
 
-        // --- NUEVA FUNCIÓN PARA CARGAR EL HISTÓRICO DE CITAS ---
-        async function cargarCitas() {
-            const selectCitaProc = document.getElementById('procCitaId');
-            if (!selectCitaProc) return;
-
-            try {
-                const res = await fetch('/clinica/citas', { headers: getAuthHeaders() });
-
-                if (res.ok) {
-                    const citas = await res.json();
-                    let opcionesHTML = '<option value="">Seleccione una cita...</option>';
-                    
-                    citas.reverse().forEach(cita => {
-                        const fechaObj = new Date(cita.fecha_hora);
-                        const fechaFormateada = fechaObj.toLocaleString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-                        opcionesHTML += `<option value="${cita.id}">Cita #${cita.id} - ${fechaFormateada} (Paciente: ${cita.paciente_id})</option>`;
-                    });
-                    
-                    selectCitaProc.innerHTML = opcionesHTML;
-                } else {
-                    selectCitaProc.innerHTML = '<option value="">Error al cargar citas</option>';
-                }
-            } catch (err) { 
-                console.error("Error al cargar citas", err);
-                selectCitaProc.innerHTML = '<option value="">Error de conexión</option>';
+        function manejarErrorSesion(response) {
+            if (response.status === 401 || response.status === 403) {
+                alert("Tu sesión ha expirado o es inválida. Por favor, inicia sesión de nuevo.");
+                cerrarSesion();
+                return true;
             }
+            return false;
         }
+
         // ==========================================
         // RUTAS DEFINITIVAS DE LOS MICROSERVICIOS
         // ==========================================
@@ -437,8 +467,7 @@
         // ==========================================
         // FASE 1: LOGIN MULTI-SISTEMA
         // ==========================================
-        // PARCHE 2: Agregamos el signo de interrogación (?.) a formLogin
-        document.getElementById('formLogin')?.addEventListener('submit', async function(e) {
+        document.getElementById('formLogin').addEventListener('submit', async function(e) {
             e.preventDefault();
             const email = document.getElementById('loginUser').value;
             const password = document.getElementById('loginPass').value;
@@ -486,8 +515,7 @@
         // ==========================================
         // FASE 2: VERIFICACIÓN MULTI-SISTEMA
         // ==========================================
-        // PARCHE 3: Agregamos el signo de interrogación (?.) a form2FA
-        document.getElementById('form2FA')?.addEventListener('submit', async function(e) {
+        document.getElementById('form2FA').addEventListener('submit', async function(e) {
             e.preventDefault();
             const codigo_2fa = document.getElementById('codigo2FA').value;
             const errorDiv = document.getElementById('login-error');
@@ -518,21 +546,14 @@
 
                 const data = await response.json();
 
-              if (response.ok && data.access_token) {
+                if (response.ok && data.access_token) {
                     localStorage.setItem('token_clinica', data.access_token);
                     localStorage.setItem('rol_actual', rolSeleccionadoTemporal);
                     
-                    let finalOverlay = document.getElementById('login-overlay');
-                    if(finalOverlay) finalOverlay.setAttribute('style', 'display: none !important;');
+                    document.getElementById('login-overlay').setAttribute('style', 'display: none !important;');
                     
                     adaptarMenuPorRol(); 
-                    
-                    // ¡CORRECCIÓN AQUÍ! Solo el admin carga la data en segundo plano
-                    if (rolSeleccionadoTemporal === 'clinica') {
-                        cargarDoctores(); 
-                        cargarPacientes(); 
-                        cargarCitas();
-                    }
+                    cargarDoctores(); 
                 } else {
                     document.getElementById('error-text').innerText = data.detail || data.message || "Código incorrecto";
                     errorDiv.classList.remove('d-none');
@@ -557,7 +578,7 @@
         function cerrarSesion() {
             localStorage.removeItem('token_clinica');
             localStorage.removeItem('rol_actual');
-            window.location.href = "https://servicio-doctor-soa.onrender.com/login";
+            location.reload();
         }
 
         function cambiarVista(idVista, elemento) {
@@ -657,85 +678,73 @@
         
         document.addEventListener("DOMContentLoaded", function() {
             if (localStorage.getItem('token_clinica')) {
-                // Solo cargar datos si eres el administrador
-                if (localStorage.getItem('rol_actual') === 'clinica') {
-                    cargarDoctores();
-                    cargarPacientes();
-                    cargarCitas(); 
-                }
+                cargarDoctores();
+                cargarPacientes();
+                cargarCitas(); 
             }
         });
 
-    // ==========================================
-        // FUNCIONES AUXILIARES PARA DIBUJAR LA TABLA
-        // ==========================================
-        function construirFilaTabla(cita) {
-            const fechaObj = new Date(cita.fecha_hora);
-            const fechaFormateada = fechaObj.toLocaleString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-            
-            let colorBadge = 'bg-primary';
-            if (cita.estado === 'ATENDIDA') colorBadge = 'bg-success';
-            if (cita.estado === 'CANCELADA') colorBadge = 'bg-danger';
+        // --- NUEVA FUNCIÓN PARA CARGAR EL HISTÓRICO DE CITAS ---
+        async function cargarCitas() {
+            const selectCitaProc = document.getElementById('procCitaId');
+            if (!selectCitaProc) return;
 
-            return `
-                <tr>
-                    <td class="ps-3 fw-bold">#${cita.id}</td>
-                    <td>${cita.paciente_id}</td>
-                    <td>${cita.doctor_id}</td>
-                    <td>${fechaFormateada}</td>
-                    <td><span class="d-inline-block text-truncate" style="max-width: 150px;" title="${cita.motivo}">${cita.motivo || 'N/A'}</span></td>
-                    <td><span class="badge ${colorBadge}">${cita.estado || 'AGENDADA'}</span></td>
-                    <td class="pe-3">
-                        <button class="btn btn-sm btn-outline-success" onclick="actualizarEstado(${cita.id}, 'ATENDIDA')" title="Atendida"><i class="bi bi-check-lg"></i></button>
-                        <button class="btn btn-sm btn-outline-danger" onclick="actualizarEstado(${cita.id}, 'CANCELADA')" title="Cancelar"><i class="bi bi-x-lg"></i></button>
-                    </td>
-                </tr>
-            `;
-        }
-
-        async function actualizarEstado(id, nuevoEstado) {
             try {
-                const res = await fetch(`/clinica/cita/${id}/estado?nuevo_estado=${nuevoEstado}`, {
-                    method: 'PUT',
-                    headers: getAuthHeaders()
-                });
-                
-                // Quitamos el cerrarSesion() y en su lugar capturamos el mensaje del backend
-                if (res.status === 401) {
-                    const errorData = await res.json();
-                    console.error("MOTIVO DEL RECHAZO 401:", errorData);
-                    alert("Atención: El servidor G2 devolvió 401. \nDetalle: " + (errorData.detail || errorData.message || "Revisa la consola (F12)"));
-                    return; 
-                }
+                const res = await fetch('/clinica/citas', { headers: getAuthHeaders() });
+                if (manejarErrorSesion(res)) return;
 
-                if(res.ok) {
-                    alert(`Cita #${id} actualizada a ${nuevoEstado}`);
-                    document.getElementById('fechaBusqueda').value ? buscarAgenda() : buscarPorDoctor();
+                if (res.ok) {
+                    const citas = await res.json();
+                    let opcionesHTML = '<option value="">Seleccione una cita...</option>';
+                    
+                    // Invertir el array para ver las citas más recientes primero
+                    citas.reverse().forEach(cita => {
+                        const fechaObj = new Date(cita.fecha_hora);
+                        const fechaFormateada = fechaObj.toLocaleString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+                        opcionesHTML += `<option value="${cita.id}">Cita #${cita.id} - ${fechaFormateada} (Paciente: ${cita.paciente_id})</option>`;
+                    });
+                    
+                    selectCitaProc.innerHTML = opcionesHTML;
                 } else {
-                    alert("Error al actualizar la cita. Status: " + res.status);
+                    selectCitaProc.innerHTML = '<option value="">Error al cargar citas</option>';
                 }
-            } catch(e) { 
-                alert("Error de red intentando conectar con el servidor."); 
+            } catch (err) { 
+                console.error("Error al cargar citas", err);
+                selectCitaProc.innerHTML = '<option value="">Error de conexión</option>';
             }
         }
-// ==========================================
-        // FUNCIÓN PARA VERIFICAR HORARIOS (G1)
-        // ==========================================
+        // --- ENDPOINT: DISPONIBILIDAD DE DOCTOR (Requiere Token) ---
         async function verificarHorariosDoctor() {
-            const docId = document.getElementById('doctorId').value;
-            if (!docId) {
-                document.getElementById('contenedorDisponibilidad').classList.add('d-none');
-                return;
-            }
-            
-            // Aquí en el futuro puedes hacer un fetch al G1 para traer las horas ocupadas
-            console.log("Verificando disponibilidad para el doctor ID:", docId);
-            
-            // Por ahora solo evitamos que la consola arroje el ReferenceError
-            // y ocultamos visualmente el contenedor si estuviera visible
-            document.getElementById('contenedorDisponibilidad').classList.add('d-none');
+            const doctorId = document.getElementById('doctorId').value;
+            const contenedor = document.getElementById('contenedorDisponibilidad');
+            const lista = document.getElementById('listaHorariosOcupados');
+            if (!doctorId) { contenedor.classList.add('d-none'); return; }
+
+            try {
+                const response = await fetch(`/clinica/citas/doctor/${doctorId}`, { headers: getAuthHeaders() });
+                if (manejarErrorSesion(response)) return;
+
+                if (response.ok) {
+                    const citas = await response.json();
+                    lista.innerHTML = "";
+                    const citasOcupadas = citas.filter(c => c.estado !== 'CANCELADA');
+                    
+                    if (citasOcupadas.length === 0) {
+                        contenedor.classList.remove('d-none');
+                        lista.innerHTML = `<span class="badge bg-success p-2 fs-6 w-100 text-start"><i class="bi bi-check-circle-fill"></i> El doctor no tiene citas ocupadas. ¡Totalmente disponible!</span>`;
+                        return;
+                    }
+                    contenedor.classList.remove('d-none');
+                    citasOcupadas.forEach(cita => {
+                        const fechaObj = new Date(cita.fecha_hora);
+                        const fechaFormateada = fechaObj.toLocaleString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
+                        lista.innerHTML += `<span class="badge bg-danger p-2 fs-6 shadow-sm"><i class="bi bi-clock-history"></i> ${fechaFormateada}</span>`;
+                    });
+                }
+            } catch (err) { console.error(err); }
         }
-        // --- ENDPOINT POST: GUARDAR CITA ---
+
+        // --- ENDPOINT POST: GUARDAR CITA (Requiere Token) ---
         document.getElementById('formCita')?.addEventListener('submit', async function(e) {
             e.preventDefault();
             const payload = {
@@ -753,7 +762,7 @@
                 headers: getAuthHeaders(),
                 body: JSON.stringify(payload)
             });
-            if (response.status === 401) return cerrarSesion();
+            if (manejarErrorSesion(response)) return;
 
             const msj = document.getElementById('mensajeCita');
             msj.className = 'alert mt-3';
@@ -762,7 +771,7 @@
                 msj.classList.add('alert-success');
                 msj.innerHTML = `<i class="bi bi-check-circle-fill"></i> ¡Cita orquestada con éxito! ID asignado: ${data.id}.`;
                 this.reset(); 
-                if (typeof verificarHorariosDoctor === "function") verificarHorariosDoctor();
+                verificarHorariosDoctor();
             } else {
                 const errorData = await response.json();
                 msj.classList.add('alert-danger');
@@ -770,22 +779,24 @@
             }
         });
 
-        // --- ENDPOINT GET: VER AGENDA POR FECHA ---
+        // --- ENDPOINT GET: VER AGENDA (Requiere Token) ---
         async function buscarAgenda() {
             const fecha = document.getElementById('fechaBusqueda').value;
             if(!fecha) return alert("Seleccione una fecha");
 
             const response = await fetch('/clinica/citas/' + fecha, { headers: getAuthHeaders() });
-            if (response.status === 401) return cerrarSesion();
+            if (manejarErrorSesion(response)) return;
             
             const citas = await response.json();
             const tbody = document.getElementById('tablaAgenda');
             tbody.innerHTML = "";
-            if(citas.length === 0) { tbody.innerHTML = "<tr><td colspan='7' class='text-center text-muted'>No hay citas registradas en esta fecha.</td></tr>"; return; }
-            citas.forEach(cita => { tbody.innerHTML += construirFilaTabla(cita); });
+            if(citas.length === 0) { tbody.innerHTML = "<tr><td colspan='7' class='text-center text-muted'>No hay citas registradas.</td></tr>"; return; }
+            citas.forEach(cita => { 
+                if (typeof construirFilaTabla === "function") tbody.innerHTML += construirFilaTabla(cita); 
+            });
         }
 
-        // --- ENDPOINT POST: PROCEDIMIENTO ---
+        // --- ENDPOINT POST: PROCEDIMIENTO (Requiere Token) ---
         document.getElementById('formProcedimiento')?.addEventListener('submit', async function(e) {
             e.preventDefault();
             const payload = {
@@ -801,12 +812,12 @@
                 headers: getAuthHeaders(),
                 body: JSON.stringify(payload)
             });
-            if (response.status === 401) return cerrarSesion();
+            if (manejarErrorSesion(response)) return;
 
+            const data = await response.json();
             const msj = document.getElementById('mensajeProc');
             msj.classList.remove('d-none');
             if (response.ok) { 
-                const data = await response.json();
                 msj.className = 'alert alert-success mt-3'; 
                 msj.textContent = `Procedimiento registrado exitosamente con ID: ${data.id}.`; 
                 this.reset();
@@ -814,19 +825,21 @@
             else { msj.className = 'alert alert-danger mt-3'; msj.textContent = "Error al guardar el procedimiento."; }
         });
 
-        // --- ENDPOINT GET: CITAS POR DOCTOR ---
+        // --- ENDPOINT GET: CITAS POR DOCTOR (Requiere Token) ---
         async function buscarPorDoctor() {
             const docId = document.getElementById('doctorBusqueda').value;
-            if(!docId) return alert("Ingrese o seleccione el ID del doctor");
+            if(!docId) return alert("Ingrese el ID del doctor");
 
             const response = await fetch('/clinica/citas/doctor/' + docId, { headers: getAuthHeaders() });
-            if (response.status === 401) return cerrarSesion();
+            if (manejarErrorSesion(response)) return;
             
             const citas = await response.json();
             const tbody = document.getElementById('tablaAgenda');
             tbody.innerHTML = "";
             if(citas.length === 0) { tbody.innerHTML = "<tr><td colspan='7' class='text-center text-muted'>No hay citas para este doctor.</td></tr>"; return; }
-            citas.forEach(cita => { tbody.innerHTML += construirFilaTabla(cita); });
+            citas.forEach(cita => { 
+                if (typeof construirFilaTabla === "function") tbody.innerHTML += construirFilaTabla(cita); 
+            });
         }
     </script>
 </body>
